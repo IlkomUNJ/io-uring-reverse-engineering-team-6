@@ -4,7 +4,7 @@ For this assigment, we want a little clarity regarding what kind of functions be
 Source | Libary | Function utilized | Time Used
 -------|--------|--------------| ------------------
 alloc_cache.h | /include/linux/kasan.h | kasan_mempool_unpoison_object | 1
-| | arch/x86/include/asm/string_64.h| memset | 1
+| | linux/lib/string.c | memset | 1
 | | alloc_cache.h | io_alloc_cache_get | 1
 | | alloc_cache.h | io_cache_alloc_new | 1
 | | alloc_cache.h | io_alloc_cache_put | 1
