@@ -308,6 +308,283 @@ napi.h | linux/kernel.h |  | 1
 | | internal (self-declared) | io_napi | 1
 | | internal (self-declared) | io_napi_busy_loop | 1
 | | internal (self-declared) | io_napi_add | 1
+net.c | linux/socket.h | sock_from_file | 9 
+| | net/socket.c | __sys_shutdown_sock | 1 
+| | net/socket.c | __sys_sendmsg_sock | 2 
+| | net/socket.c | __sys_recvmsg_sock | 1 
+| | net/socket.c | __sys_connect_file | 1 
+| | net/socket.c | __sys_socket_file | 1 
+| | linux/uio.c | iov_iter_count | 7 
+| | linux/uio.c | iov_iter_ubuf | 1 
+| | linux/uio.c | iov_iter_init | 2 
+| | linux/uio.c | io_import_reg_buf | 1 
+| | linux/uio.c | io_import_reg_vec | 1 
+| | linux/uio.c | import_ubuf | 6 
+| | linux/uio.c | __import_iovec | 1 
+| | linux/uio.c | __copy_msghdr | 1 
+| | linux/uio.c | io_vec_reset_iovec | 1 
+| | linux/uio.c | io_vec_free | 2 
+| | linux/uio.c | io_prep_reg_iovec | 1 
+| | linux/uaccess.h | copy_from_user | 4 
+| | linux/uaccess.h | copy_to_user | 1 
+| | linux/uaccess.h | user_access_begin | 1 
+| | linux/uaccess.h | user_access_end | 1 
+| | linux/limits.h | rlimit | 2 
+| | linux/file.c | __get_unused_fd_flags | 2 
+| | linux/file.c | fd_install | 2 
+| | linux/file.c | put_unused_fd | 2 
+| | linux/net/socket.c | do_accept | 1 
+| | linux/net/socket.c | sock_error | 1 
+| | net/core/skbuff.c | sock_sendmsg | 2 
+| | net/core/skbuff.c | sock_recvmsg | 3 
+| | linux/errno.h | PTR_ERR | 3 
+| | linux/errno.h | IS_ERR | 3 
+| | internal (self-declared) | io_shutdown_prep | 1 
+| | internal (self-declared) | io_shutdown | 1 
+| | internal (self-declared) | io_net_retry | 2 
+| | internal (self-declared) | io_netmsg_iovec_free | 2 
+| | internal (self-declared) | io_netmsg_recycle | 1 
+| | internal (self-declared) | io_msg_alloc_async | 3 
+| | internal (self-declared) | io_mshot_prep_retry | 2 
+| | internal (self-declared) | io_net_import_vec | 2 
+| | internal (self-declared) | io_compat_msg_copy_hdr | 1 
+| | internal (self-declared) | io_copy_msghdr_from_user | 1 
+| | internal (self-declared) | io_msg_copy_hdr | 1 
+| | internal (self-declared) | io_sendmsg_recvmsg_cleanup | 1 
+| | internal (self-declared) | io_send_setup | 1 
+| | internal (self-declared) | io_sendmsg_setup | 1 
+| | internal (self-declared) | io_sendmsg_prep | 1 
+| | internal (self-declared) | io_send_finish | 1 
+| | internal (self-declared) | io_sendmsg | 1 
+| | internal (self-declared) | io_send_select_buffer | 1 
+| | internal (self-declared) | io_send | 1 
+| | internal (self-declared) | io_recvmsg_mshot_prep | 1 
+| | internal (self-declared) | io_recvmsg_copy_hdr | 1 
+| | internal (self-declared) | io_recvmsg_prep_setup | 1 
+| | internal (self-declared) | io_recvmsg_prep | 1 
+| | internal (self-declared) | io_recv_finish | 1 
+| | internal (self-declared) | io_recvmsg_multishot | 1 
+| | internal (self-declared) | io_recvmsg | 1 
+| | internal (self-declared) | io_recv_buf_select | 1 
+| | internal (self-declared) | io_recv | 1 
+| | internal (self-declared) | io_recvzc_prep | 1 
+| | internal (self-declared) | io_recvzc | 1 
+| | internal (self-declared) | io_send_zc_cleanup | 1 
+| | internal (self-declared) | io_send_zc_prep | 1 
+| | internal (self-declared) | io_send_zc | 1 
+| | internal (self-declared) | io_sendmsg_zc | 1 
+| | internal (self-declared) | io_sendrecv_fail | 1 
+| | internal (self-declared) | io_accept_prep | 1 
+| | internal (self-declared) | io_accept | 1 
+| | internal (self-declared) | io_socket_prep | 1 
+| | internal (self-declared) | io_socket | 1 
+| | internal (self-declared) | io_connect_prep | 1 
+| | internal (self-declared) | io_connect | 1 
+net.h | linux/net.h | struct socket, struct sockaddr | 1 
+| | linux/uio.h | struct iovec, struct msghdr | 1 
+| | linux/io_uring_types.h | struct io_kiocb, struct io_uring_sqe | 1 
+| | internal (self-declared) | io_shutdown_prep | 1 
+| | internal (self-declared) | io_shutdown | 1 
+| | internal (self-declared) | io_sendmsg_recvmsg_cleanup | 1 
+| | internal (self-declared) | io_sendmsg_prep | 1 
+| | internal (self-declared) | io_sendmsg | 1 
+| | internal (self-declared) | io_send | 1 
+| | internal (self-declared) | io_recvmsg_prep | 1 
+| | internal (self-declared) | io_recvmsg | 1 
+| | internal (self-declared) | io_recv | 1 
+| | internal (self-declared) | io_sendrecv_fail | 1 
+| | internal (self-declared) | io_accept_prep | 1 
+| | internal (self-declared) | io_accept | 1 
+| | internal (self-declared) | io_socket_prep | 1 
+| | internal (self-declared) | io_socket | 1 
+| | internal (self-declared) | io_connect_prep | 1 
+| | internal (self-declared) | io_connect | 1 
+| | internal (self-declared) | io_send_zc | 1 
+| | internal (self-declared) | io_sendmsg_zc | 1 
+| | internal (self-declared) | io_send_zc_prep | 1 
+| | internal (self-declared) | io_send_zc_cleanup | 1 
+| | internal (self-declared) | io_bind_prep | 1 
+| | internal (self-declared) | io_bind | 1 
+| | internal (self-declared) | io_listen_prep | 1 
+| | internal (self-declared) | io_listen | 1 
+| | internal (self-declared) | io_netmsg_cache_free | 1
+nop.c | linux/kernel.h | READ_ONCE | 4 
+| | linux/errno.h | -EINVAL, -EBADF, -EFAULT | 3 
+| | linux/io_uring.h | IORING_NOP_* flags | 4 
+| | internal (self-declared) | io_nop_prep | 1 
+| | internal (self-declared) | io_nop | 1 
+| | internal (self-declared) | io_kiocb_to_cmd | 2 
+| | internal (self-declared) | io_file_get_fixed | 1 
+| | internal (self-declared) | io_file_get_normal | 1 
+| | internal (self-declared) | io_find_buf_node | 1 
+| | internal (self-declared) | req_set_fail | 1 
+| | internal (self-declared) | io_req_set_res | 1
+nop.h | internal (self-declared) | io_nop_prep | 1 
+| | internal (self-declared) | io_nop | 1 
+| | linux/io_uring_types.h | struct io_kiocb | 1 
+| | linux/io_uring.h | struct io_uring_sqe | 1
+notif.c | linux/kernel.h | WRITE_ONCE, unlikely | 3 
+| | linux/errno.h | -EEXIST | 3 
+| | linux/file.h | struct file | 1 
+| | linux/slab.h | NULL, kmalloc/kfree-related macro | 1 
+| | linux/net.h | struct sk_buff | 1 
+| | linux/io_uring.h | IORING_OP_NOP | 1 
+| | internal (self-declared) | io_notif_tw_complete | 1 
+| | internal (self-declared) | io_tx_ubuf_complete | 1 
+| | internal (self-declared) | io_link_skb | 1 
+| | internal (self-declared) | io_alloc_notif | 1 
+| | internal (self-declared) | io_notif_to_data | 3 
+| | internal (self-declared) | cmd_to_io_kiocb | 4 
+| | internal (self-declared) | io_req_task_complete | 1 
+| | internal (self-declared) | __io_unaccount_mem | 1 
+| | internal (self-declared) | refcount_read | 1 
+| | internal (self-declared) | refcount_dec_and_test | 1 
+| | internal (self-declared) | __io_req_task_work_add | 1 
+| | internal (self-declared) | skb_zcopy | 1 
+| | internal (self-declared) | skb_zcopy_init | 1 
+| | internal (self-declared) | net_zcopy_get | 2 
+| | internal (self-declared) | io_alloc_req | 1 
+| | internal (self-declared) | io_get_task_refs | 1 
+| | internal (self-declared) | refcount_set | 1
+notif.h | linux/net.h | struct sock | 1 
+| | linux/uio.h | struct ubuf_info | 1 
+| | net/sock.h |  | 0 
+| | linux/nospec.h | __must_hold | 1 
+| | linux/io_uring.h | struct io_kiocb, io_ring_ctx | 3 
+| | mm/user_mem.c | __io_account_mem | 1 
+| | io_uring/io_uring.c | io_kiocb_to_cmd | 1 
+| | internal (self-declared) | io_alloc_notif | 1 
+| | internal (self-declared) | io_tx_ubuf_complete | 2 
+| | internal (self-declared) | io_notif_to_data | 2 
+| | internal (self-declared) | io_notif_flush | 1 
+| | internal (self-declared) | io_notif_account_mem | 1
+opdef.c | nop.h | io_nop_prep | 1 
+| | nop.h | io_nop | 1 
+| | rw.h | io_prep_readv | 1 
+| | rw.h | io_read | 4 
+| | rw.h | io_prep_writev | 1 
+| | rw.h | io_write | 4 
+| | fs.h | io_fsync_prep | 1 
+| | fs.h | io_fsync | 1 
+| | rw.h | io_prep_read_fixed | 1 
+| | rw.h | io_read_fixed | 1 
+| | rw.h | io_prep_write_fixed | 1 
+| | rw.h | io_write_fixed | 1 
+| | poll.h | io_poll_add_prep | 1 
+| | poll.h | io_poll_add | 1 
+| | poll.h | io_poll_remove_prep | 1 
+| | poll.h | io_poll_remove | 1 
+| | fs.h | io_sfr_prep | 1 
+| | fs.h | io_sync_file_range | 1 
+| | net.h | io_sendmsg_prep | 1 
+| | net.h | io_sendmsg | 1 
+| | net.h | io_recvmsg_prep | 1 
+| | net.h | io_recvmsg | 1 
+| | timeout.h | io_timeout_prep | 1 
+| | timeout.h | io_timeout | 1 
+| | timeout.h | io_timeout_remove_prep | 1 
+| | timeout.h | io_timeout_remove | 1 
+| | net.h | io_accept_prep | 1 
+| | net.h | io_accept | 1 
+| | cancel.h | io_async_cancel_prep | 1 
+| | cancel.h | io_async_cancel | 1 
+| | timeout.h | io_link_timeout_prep | 1 
+| | internal (self-declared) | io_no_issue | 1 
+| | net.h | io_connect_prep | 1 
+| | net.h | io_connect | 1 
+| | fs.h | io_fallocate_prep | 1 
+| | fs.h | io_fallocate | 1 
+| | openclose.h | io_openat_prep | 1 
+| | openclose.h | io_openat | 1 
+| | openclose.h | io_close_prep | 1 
+| | openclose.h | io_close | 1 
+| | rsrc.h | io_files_update_prep | 1 
+| | rsrc.h | io_files_update | 1 
+| | statx.h | io_statx_prep | 1 
+| | statx.h | io_statx | 1 
+| | rw.h | io_prep_read | 1 
+| | rw.h | io_prep_write | 1 
+| | advise.h | io_fadvise_prep | 1 
+| | advise.h | io_fadvise | 1 
+| | advise.h | io_madvise_prep | 1 
+| | advise.h | io_madvise | 1 
+| | openclose.h | io_openat2_prep | 1 
+| | openclose.h | io_openat2 | 1 
+| | epoll.h | io_epoll_ctl_prep | 1 
+| | epoll.h | io_epoll_ctl | 1 
+| | splice.h | io_splice_prep | 1 
+| | splice.h | io_splice | 1 
+| | kbuf.h | io_provide_buffers_prep | 1 
+| | kbuf.h | io_provide_buffers | 1 
+| | kbuf.h | io_remove_buffers_prep | 1 
+| | kbuf.h | io_remove_buffers | 1 
+| | splice.h | io_tee_prep | 1 
+| | splice.h | io_tee | 1 
+| | net.h | io_shutdown_prep | 1 
+| | net.h | io_shutdown | 1 
+| | fs.h | io_renameat_prep | 1 
+| | fs.h | io_renameat | 1 
+| | fs.h | io_unlinkat_prep | 1 
+| | fs.h | io_unlinkat | 1 
+| | fs.h | io_mkdirat_prep | 1 
+| | fs.h | io_mkdirat | 1 
+| | fs.h | io_symlinkat_prep | 1 
+| | fs.h | io_symlinkat | 1 
+| | fs.h | io_linkat_prep | 1 
+| | fs.h | io_linkat | 1 
+| | msg_ring.h | io_msg_ring_prep | 1 
+| | msg_ring.h | io_msg_ring | 1 
+| | xattr.h | io_fsetxattr_prep | 1 
+| | xattr.h | io_fsetxattr | 1 
+| | xattr.h | io_setxattr_prep | 1 
+| | xattr.h | io_setxattr | 1 
+| | xattr.h | io_fgetxattr_prep | 1 
+| | xattr.h | io_fgetxattr | 1 
+| | xattr.h | io_getxattr_prep | 1 
+| | xattr.h | io_getxattr | 1 
+| | uring_cmd.h | io_uring_cmd_prep | 1 
+| | uring_cmd.h | io_uring_cmd | 1 
+| | zcrx.h | io_send_zc_prep | 1 
+| | zcrx.h | io_send_zc | 1 
+| | zcrx.h | io_sendmsg_zc_prep | 1 
+| | zcrx.h | io_sendmsg_zc | 1 
+| | rw.h | io_read_mshot_prep | 1 
+| | rw.h | io_read_mshot | 1
+| | waitid.h | io_waitid_prep | 1 
+| | waitid.h | io_waitid | 1 
+| | futex.h | io_futex_prep | 2 
+| | futex.h | io_futex_wait | 1 
+| | futex.h | io_futex_wake | 1 
+| | futex.h | io_futexv_prep | 1 
+| | futex.h | io_futexv_wait | 1 
+| | truncate.h | io_install_fixed_fd_prep | 1 
+| | truncate.h | io_install_fixed_fd | 1 
+opdef.h | linux/types.h | u8 | 1 
+| | internal (self-declared) | struct io_issue_def | 1 
+| | internal (self-declared) | struct io_cold_def | 1 
+| | internal (self-declared) | io_issue_defs | 1 
+| | internal (self-declared) | io_cold_defs | 1 
+| | internal (self-declared) | io_uring_op_supported | 1 
+| | internal (self-declared) | io_uring_optable_init | 1 
+openclose.c | linux/kernel.h | WARN_ON_ONCE | 1 
+| | linux/errno.h | EINVAL, EBADF, EPERM | 3 
+| | linux/fs.h | struct file, filp_close | 2 
+| | linux/file.h | f_op, flush | 1 
+| | linux/fdtable.h | __get_unused_fd_flags, put_unused_fd, fd_install | 3 
+| | linux/fsnotify.h |  | 0 
+| | linux/namei.h | do_filp_open, build_open_flags, files_lookup_fd_locked, file_close_fd_locked | 4 
+| | linux/io_uring.h | struct io_uring_sqe | 1 
+| | uapi/linux/io_uring.h | struct open_how, IORING_FIXED_FD_NO_CLOEXEC | 2 
+| | io_uring.h | io_kiocb_to_cmd, io_req_set_res, req_set_fail, IOU_OK, REQ_F_FORCE_ASYNC, REQ_F_NEED_CLEANUP, REQ_F_FIXED_FILE, REQ_F_CREDS | 9 
+| | rsrc.h | io_fixed_fd_install, io_fixed_fd_remove | 2 
+| | openclose.h | io_openat_prep, io_openat2_prep, io_openat2, io_openat, io_close_prep, io_close, io_open_cleanup, io_install_fixed_fd_prep, io_install_fixed_fd | 9 
+| | fs/internal.h | build_open_how, copy_struct_from_user, force_o_largefile | 3 
+| | internal (self-declared) | struct io_open, struct io_close, struct io_fixed_install | 3 
+| | internal (self-declared) | io_openat_force_async | 1 
+| | internal (self-declared) | __io_openat_prep | 1 
+| | internal (self-declared) | __io_close_fixed | 1 
+| | current macro | current->files | 1 
+| | linux/rlimit.h (implisit) | rlimit, RLIMIT_NOFILE | 1
 
 
 ----------------------
