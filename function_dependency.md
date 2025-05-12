@@ -132,6 +132,108 @@ eventfd.h | eventfd.c | io_eventfd_register | 1
 | | eventfd.c | io_eventfd_unregister | 1
 | | eventfd.c | io_eventfd_flush_signal | 1
 | | eventfd.c | io_eventfd_signal | 1
+fdinfo.c | finfo.c | io_uring_show_cred | 
+| | | seq_user_ns | 
+| | | seq_printf | 
+| | | seq_put_decimal_ull | 
+| | | from_kuid_munged | 
+| | | from_kgid_munged | 
+| | | seq_puts | 
+| | | seq_put_hex_ll | 
+| | | seq_putc | 
+| | | common_tracking_show_fdinfo |
+| | | napi_show_fdinfo | 
+| | | io_uring_show_fdinfo | 
+| | | io_uring_get_opcode | 
+| | | mutex_trylock | 
+| | | getrusage | 
+| | | io_slot_file | 
+| | | seq_file_path | 
+| | | xa_empty | 
+| | | xa_for_each | 
+| | | task_work_pending | 
+| | | mutex_unlock | 
+| | | spin_lock | 
+| | | spin_unlock | 
+fdinfo.h | fdinfo.c | io_uring_show_fdinfo | 1 
+filetable.c | filetable.c | io_file_bitmap_get | 2
+| | | find_next_zero_bit | 
+| | | io_alloc_file_tables |
+| | | io_rsrc_data_alloc | 
+| | | bitmap_zalloc | 
+| | | io_rsrc_data_free | 
+| | | io_free_file_tables | 
+| | | bitmap_free | 
+| | | io_install_fixed_file | 
+| | | __must_hold | 
+| | | io_is_uring_fops | 
+| | | io_rsrc_node_alloc | 
+| | | io_reset_rsrc_node | 
+| | | io_file_bitmap_set | 
+| | | io_fixed_file_set | 
+| | | __io_fixed_fd_install | 
+| | | io_fixed_fd_install | 
+| | | io_ring_submit_lock | 
+| | | io_ring_submit_unlock | 
+| | | fput | 
+| | | io_fixed_fd_remove | 
+| | | io_rsrc_node_lookup | 
+| | | io_file_bitmap_clear | 
+| | | io_register_file_alloc_range | 
+| | | copy_from_user | 
+| | | check_add_overflow | 
+| | | io_file_table_set_alloc_range | 
+filetable.h | filetable.c | io_alloc_file_tables | 1
+| | | io_free_file_tables |
+| | | io_fixed_fd_install | 
+| | | __io_fixed_fd_install | 
+| | | io_fixed_fd_remove | 
+| | | io_register_file_alloc_range | 
+| | | io_file_get_flags | 2  
+| | | io_file_bitmap_clear | 
+| | | io_file_bitmap_set | 
+| | | io_slot_flags | 
+| | | io_slot_file | 
+| | | io_fixed_file_set | 
+| | | io_file_table_set_alloc_range | 
+fs.c | fs.c | io_renameat_prep | 
+| | | getname | 
+| | | putname | 
+| | | io_renameat |
+| | | do_renameat2 | 
+| | | io_req_set_res | 
+| | | io_renameat_cleanup | 
+| | | io_unlinkat_prep | 
+| | | io_unlinkat | 
+| | | do_rmdir | 
+| | | do_unlinkat | 
+| | | io_unlinkat_cleanup | 
+| | | io_mkdirat_prep | 
+| | | io_mkdirat | 
+| | | do_mkdirat | 
+| | | io_mkdirat_cleanup | 
+| | | io_symlinkat_prep | 
+| | | io_symlinkat | 
+| | | io_linkat_prep | 
+| | | getname_uflags | 
+| | | io_linkat | 
+| | | do_linkat | 
+| | | io_link_cleanup | 
+fs.h | fs.c | io_renameat_prep | 1
+| | | io_renameat | 
+| | | io_renameat_cleanup | 
+| | | io_unlinkat_prep | 
+| | | io_unlinkat | 
+| | | io_unlinkat_cleanup | 
+| | | io_mkdirat_prep | 
+| | | io_mkdirat | 
+| | | io_mkdirat_cleanup | 
+| | | io_symlinkat_prep | 
+| | | io_symlinkat | 
+| | | io_linkat_prep | 
+| | | io_linkat | 
+| | | io_link_cleanup | 
+futex.c | futex.c | io_futex_cache_init | 
 kbuf.c | kbuf.c | io_buffer_get_list | 10
 | | linux/compiler.h | READ_ONCE | 8
 | | linux/lockdep.h | lockdep_assert_held | 6
