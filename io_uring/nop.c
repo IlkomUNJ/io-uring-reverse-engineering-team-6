@@ -22,6 +22,13 @@ struct io_nop {
 #define NOP_FLAGS	(IORING_NOP_INJECT_RESULT | IORING_NOP_FIXED_FILE | \
 			 IORING_NOP_FIXED_BUFFER | IORING_NOP_FILE)
 
+/*
+ * Menyiapkan operasi NOP (no-operation) dengan memproses parameter yang diterima
+ * dari SQE (submission queue entry). Flag yang terkait dengan operasi NOP diperiksa dan nilai 
+ * hasilnya diatur berdasarkan flag IORING_NOP_INJECT_RESULT. Jika flag IORING_NOP_FILE diatur, 
+ * file descriptor akan diset, dan jika flag IORING_NOP_FIXED_BUFFER ada, buffer yang terkait 
+ * akan dipilih.
+*/
 int io_nop_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_nop *nop = io_kiocb_to_cmd(req, struct io_nop);
@@ -43,6 +50,13 @@ int io_nop_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return 0;
 }
 
+/*
+ * menangani operasi NOP (no-operation) dalam konteks I/O. 
+ * Jika flag IORING_NOP_FILE diatur, file akan diproses tergantung apakah file tersebut
+ * adalah file tetap (fixed) atau tidak. Jika buffer tetap (IORING_NOP_FIXED_BUFFER) digunakan, 
+ * fungsi ini akan memverifikasi keberadaan buffer yang sesuai. Jika ada kesalahan, hasilnya akan 
+ * diset ke nilai negatif dan operasi dianggap gagal.
+*/
 int io_nop(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_nop *nop = io_kiocb_to_cmd(req, struct io_nop);
