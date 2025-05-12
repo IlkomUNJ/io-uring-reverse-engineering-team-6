@@ -11,7 +11,7 @@ advise.c | advise.c | io_madvise_prep | 1
 | | advise.c | io_fadvise_prep | 1
 | | advise.c | io_fadvise | 1
 | | mm/fadvise.c | vfs_fadvise | 1
-| | io_uring/io_uring.h | req_set_fail | 1 
+| | io_uring.h | req_set_fail | 1 
 advise.h | advise.c | io_madvise_prep | 1
 | | advise.c | io_madvise | 1
 | | advise.c | io_fadvise_prep | 1
@@ -36,30 +36,102 @@ alloc_cache.h | alloc_cache.c | io_alloc_cache_free | 1
 | | alloc_cache.h | io_cache_alloc | 1
 | | alloc_cache.h | io_cache_free | 1
 | | mm/slub.c | kfree | 1
-cancel.c | cancel.c | io_cancel_req_match | 
-| | cancel.h | io_cancel_match_sequence |
-| | cancel.c | io_cancel_cb |
-| | cancel.c | io_async_cancel_one |
-| | io-wq.c | io_wq_cancel_cb |
-| | cancel.c | io_try_cancel |
-| | io-wq.h | io_wq_current_is_worker | 
-| | poll.c | io_poll_cancel |
-| | waitid.c | io_waitid_cancel |
-| | futex.c | io_futex_cancel |
-| | include/linux/spinlock.h | spin_lock |
-| | timeout.c | io_timeout_cancel | 
-| | include/linux/spinlock.h | spin_unlock |
-| | cancel.c | io_async_cancel_prep |
-| | cancel.c | __io_async_cancel |
-| | io_uring.h | io_ring_submit_lock |
-| | io_uring.h | io_ring_submit_unlock |
-| | cancel.c | io_async_cancel |
-| | include/linux/atomic/atomic-instrumented.h | atomic_inc_return |
-| | io_uring.c | io_file_get_fixed |
-| | io_uring.c | io_file_get_normal | 
-| | rsrc.h | io_rsrc_node_lookup |
-| | filetable.h | io_slot_file |
-| | cancel.c | io_sync_cancel |
+cancel.c | cancel.c | io_cancel_req_match | 3
+| | cancel.h | io_cancel_match_sequence | 1
+| | cancel.c | io_cancel_cb | 1
+| | cancel.c | io_async_cancel_one | 3
+| | io-wq.c | io_wq_cancel_cb | 1
+| | cancel.c | io_try_cancel | 2
+| | io-wq.h | io_wq_current_is_worker | 1
+| | poll.c | io_poll_cancel | 1
+| | waitid.c | io_waitid_cancel | 1
+| | futex.c | io_futex_cancel | 1
+| | include/linux/spinlock.h | spin_lock | 1
+| | timeout.c | io_timeout_cancel | 1
+| | include/linux/spinlock.h | spin_unlock | 1
+| | cancel.c | io_async_cancel_prep | 1
+| | cancel.c | __io_async_cancel | 3
+| | io_uring.h | io_ring_submit_lock | 2
+| | io_uring.h | io_ring_submit_unlock | 2
+| | cancel.c | io_async_cancel | 1
+| | include/linux/atomic/atomic-instrumented.h | atomic_inc_return | 3
+| | io_uring.c | io_file_get_fixed | 1
+| | io_uring.c | io_file_get_normal | 1
+| | io_uring.h | req_set_fail | 1
+| | io_uring.h | io_req_set_res | 1 
+| | cancel.c | __io_sync_cancel | 3
+| | rsrc.h | io_rsrc_node_lookup | 1
+| | filetable.h | io_slot_file | 1
+| | cancel.c | io_sync_cancel | 1
+| | include/linux/ktime.h | ktime_add_ns | 1
+| | include/linux/ktime.h | timespec64_to_ktime | 1
+| | include/linux/timekeeping.h | ktime_get_ns | 1
+| | kernel/sched/wait.c | prepare_to_wait | 1
+| | include/linux/mutex.h | mutex_unlock | 1
+| | io_uring.c | io_run_task_work_sig | 1 
+| | kernel/time/sleep_timeout.c | schedule_hrtimeout | 1
+| | include/linux/mutex.h | mutex_lock | 2
+| | kernel/sched/wait.c | finish_wait | 1
+| | tools/testing/vma/vma_internal.h | fput | 1
+| | cancel.c | io_cancel_remove_all | 1
+| | tools/include/linux/list.h | hlist_for_each_entry_safe | 2
+| | io_uring.c | io_match_task_safe | 1
+| | tools/include/linux/list.h | hlist_del_init | 1
+| | cancel.c | io_cancel_remove | 1
+cancel.h | cancel.c | io_async_cancel_prep | 1
+| | cancel.c | io_async_cancel | 1
+| | cancel.c | io_try_cancel | 1
+| | cancel.c | io_sync_cancel | 1
+| | cancel.c | io_cancel_req_match | 1
+| | cancel.c | io_cancel_remove_all | 1
+| | cancel.c | io_cancel_remove | 1
+| | cancel.h | io_cancel_match_sequence | 1
+epoll.c | epoll.c | io_epoll_ctl_prep | 1
+| | include/linux/eventpoll.h | ep_op_has_event | 1
+| | include/linux/uaccess.h | copy_from_user | 1
+| | epoll.c | io_epoll_ctl | 1
+| | include/linux/eventpoll.h | do_epoll_ctl | 1
+| | io_uring.h | req_set_fail | 2
+| | io_uring.h | io_req_set_res | 2 
+| | epoll.c | io_epoll_wait_prep | 1
+| | epoll.c | io_epoll_wait | 1
+| | include/linux/eventpoll.h | epoll_sendevents | 1
+epoll.h | epoll.c | io_epoll_ctl_prep | 1
+| | epoll.c | io_epoll_ctl | 1
+| | epoll.c | io_epoll_wait_prep | 1
+| | epoll.c | io_epoll_wait | 1
+eventfd.c | eventfd.c | io_eventfd_free | 2
+| | fs/eventfd.c | eventfd_ctx_put | 1
+| | mm/slub.c | kfree | 2
+| | eventfd.c | io_eventfd_put | 4
+| | include/linux/refcount.h | refcount_dec_and_test | 1
+| | kernel/rcu/tiny.c | call_rcu | 1
+| | eventfd.c | io_eventfd_do_signal | 2
+| | fs/eventfd.c | eventfd_signal_mask | 2 
+| | eventfd.c | io_eventfd_release | 3
+| | include/linux/rcupdate.h | rcu_read_unlock | 2
+| | eventfd.c | __io_eventfd_signal | 3
+| | include/linux/eventfd.h | eventfd_signal_allowed | 1
+| | include/linux/atomic/atomic-instrumented.h | atomic_fetch_or | 1
+| | include/linux/rcupdate.h | call_rcu_hurry | 1
+| | eventfd.c | io_eventfd_trigger | 2
+| | io-wq.h | io_wq_current_is_worker | 1
+| | eventfd.c | io_eventfd_grab | 3
+| | include/linux/refcount.h | refcount_inc_not_zero | 1
+| | eventfd.c | io_eventfd_signal | 1 
+| | eventfd.c | io_eventfd_flush_signal | 1
+| | include/linux/spinlock.h | spin_lock | 2
+| | include/linux/spinlock.h | spin_unlock | 2
+| | eventfd.c | io_eventfd_register | 1
+| | include/linux/uaccess.h | copy_from_user | 1
+| | tools/lib/slab.c | kmalloc | 1
+| | fs/eventfd.c | eventfd_ctx_fdget | 1
+| | include/linux/refcount.h | refcount_set | 1
+| | eventfd.c | io_eventfd_unregister | 1
+eventfd.h | eventfd.c | io_eventfd_register | 1
+| | eventfd.c | io_eventfd_unregister | 1
+| | eventfd.c | io_eventfd_flush_signal | 1
+| | eventfd.c | io_eventfd_signal | 1
 kbuf.c | kbuf.c | io_buffer_get_list | 10
 | | linux/compiler.h | READ_ONCE | 8
 | | linux/lockdep.h | lockdep_assert_held | 6
