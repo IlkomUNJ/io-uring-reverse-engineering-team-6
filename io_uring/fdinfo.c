@@ -16,6 +16,12 @@
 #include "rsrc.h"
 
 #ifdef CONFIG_PROC_FS
+/*
+ * Fungsi ini menampilkan informasi detail tentang kredensial pengguna
+ * termasuk UID, GID, groups, dan capabilities ke file proc.
+ *
+ * Return: 0 jika sukses
+ */
 static __cold int io_uring_show_cred(struct seq_file *m, unsigned int id,
 		const struct cred *cred)
 {
@@ -47,6 +53,10 @@ static __cold int io_uring_show_cred(struct seq_file *m, unsigned int id,
 }
 
 #ifdef CONFIG_NET_RX_BUSY_POLL
+/*
+ * Menampilkan informasi dasar tentang konfigurasi NAPI busy polling
+ * untuk io_uring.
+ */
 static __cold void common_tracking_show_fdinfo(struct io_ring_ctx *ctx,
 					       struct seq_file *m,
 					       const char *tracking_strategy)
@@ -60,6 +70,10 @@ static __cold void common_tracking_show_fdinfo(struct io_ring_ctx *ctx,
 		seq_puts(m, "napi_prefer_busy_poll:\tfalse\n");
 }
 
+/*
+ * Menampilkan informasi NAPI busy polling sesuai dengan mode tracking
+ * yang aktif (static/dynamic/disabled).
+ */
 static __cold void napi_show_fdinfo(struct io_ring_ctx *ctx,
 				    struct seq_file *m)
 {
@@ -86,9 +100,10 @@ static inline void napi_show_fdinfo(struct io_ring_ctx *ctx,
 }
 #endif
 
-/*
- * Caller holds a reference to the file already, we don't need to do
- * anything else to get an extra reference.
+/* 
+ *Menampilkan semua informasi tentang io_uring instance
+ * ke file procfs. Termasuk status SQ/CQ, daftar SQE/CQE, informasi SQPOLL,
+ * file/buffer yang terdaftar, dan lainnya.
  */
 __cold void io_uring_show_fdinfo(struct seq_file *m, struct file *file)
 {
@@ -115,10 +130,8 @@ __cold void io_uring_show_fdinfo(struct seq_file *m, struct file *file)
 		sq_shift = 1;
 
 	/*
-	 * we may get imprecise sqe and cqe info if uring is actively running
-	 * since we get cached_sq_head and cached_cq_tail without uring_lock
-	 * and sq_tail and cq_head are changed by userspace. But it's ok since
-	 * we usually use these info when it is stuck.
+	 * Informasi SQE dan CQE mungkin tidak akurat jika io_uring sedang aktif
+	 * karena kita mengambil cached_sq_head dan cached_cq_tail tanpa lock
 	 */
 	seq_printf(m, "SqMask:\t0x%x\n", sq_mask);
 	seq_printf(m, "SqHead:\t%u\n", sq_head);
@@ -176,21 +189,12 @@ __cold void io_uring_show_fdinfo(struct seq_file *m, struct file *file)
 		seq_printf(m, "\n");
 	}
 
-	/*
-	 * Avoid ABBA deadlock between the seq lock and the io_uring mutex,
-	 * since fdinfo case grabs it in the opposite direction of normal use
-	 * cases. If we fail to get the lock, we just don't iterate any
-	 * structures that could be going away outside the io_uring mutex.
-	 */
+	/* Hindari deadlock antara seq lock dan io_uring mutex */
 	has_lock = mutex_trylock(&ctx->uring_lock);
 
 	if (has_lock && (ctx->flags & IORING_SETUP_SQPOLL)) {
 		struct io_sq_data *sq = ctx->sq_data;
 
-		/*
-		 * sq->thread might be NULL if we raced with the sqpoll
-		 * thread termination.
-		 */
 		if (sq->thread) {
 			sq_pid = sq->task_pid;
 			sq_cpu = sq->sq_cpu;

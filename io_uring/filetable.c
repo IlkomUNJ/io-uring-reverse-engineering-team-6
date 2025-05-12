@@ -13,6 +13,13 @@
 #include "rsrc.h"
 #include "filetable.h"
 
+/*
+ * Fungsi ini mencari slot kosong dalam bitmap alokasi file menggunakan pola
+ * pencarian melingkar mulai dari hint terakhir. Jika mencapai akhir,
+ * pencarian dilanjutkan dari awal.
+ *
+ * Return: Index slot jika tersedia, -ENFILE jika penuh
+ */
 static int io_file_bitmap_get(struct io_ring_ctx *ctx)
 {
 	struct io_file_table *table = &ctx->file_table;
@@ -36,6 +43,12 @@ static int io_file_bitmap_get(struct io_ring_ctx *ctx)
 	return -ENFILE;
 }
 
+/*
+ * Mengalokasikan struktur data untuk manajemen file tabel termasuk bitmap
+ * dan array node sumber daya.
+ *
+ * Return: true jika berhasil, false jika gagal
+ */
 bool io_alloc_file_tables(struct io_ring_ctx *ctx, struct io_file_table *table,
 			  unsigned nr_files)
 {
@@ -48,6 +61,10 @@ bool io_alloc_file_tables(struct io_ring_ctx *ctx, struct io_file_table *table,
 	return false;
 }
 
+/*
+ * Membersihkan semua resource yang dialokasikan untuk file tabel termasuk
+ * bitmap dan data sumber daya.
+ */
 void io_free_file_tables(struct io_ring_ctx *ctx, struct io_file_table *table)
 {
 	io_rsrc_data_free(ctx, &table->data);
@@ -55,6 +72,12 @@ void io_free_file_tables(struct io_ring_ctx *ctx, struct io_file_table *table)
 	table->bitmap = NULL;
 }
 
+/*
+ * Memasang file ke slot tetap setelah memvalidasi file dan slot.
+ * Mengalokasikan node sumber daya baru untuk file tersebut.
+ *
+ * Return: 0 jika sukses, kode error jika gagal
+ */
 static int io_install_fixed_file(struct io_ring_ctx *ctx, struct file *file,
 				 u32 slot_index)
 	__must_hold(&req->ctx->uring_lock)
@@ -80,6 +103,12 @@ static int io_install_fixed_file(struct io_ring_ctx *ctx, struct file *file,
 	return 0;
 }
 
+/*
+ * Menginstal file ke slot tetap, baik yang ditentukan atau dialokasikan otomatis.
+ * Merupakan implementasi inti tanpa penguncian.
+ *
+ * Return: Index slot jika sukses, kode error jika gagal
+ */
 int __io_fixed_fd_install(struct io_ring_ctx *ctx, struct file *file,
 			  unsigned int file_slot)
 {
@@ -100,9 +129,12 @@ int __io_fixed_fd_install(struct io_ring_ctx *ctx, struct file *file,
 		ret = file_slot;
 	return ret;
 }
+
 /*
- * Note when io_fixed_fd_install() returns error value, it will ensure
- * fput() is called correspondingly.
+ * Versi aman untuk dipanggil dari luar yang menangani penguncian dan
+ * pembersihan jika gagal.
+ *
+ * Return: Index slot jika sukses, kode error jika gagal
  */
 int io_fixed_fd_install(struct io_kiocb *req, unsigned int issue_flags,
 			struct file *file, unsigned int file_slot)
@@ -119,6 +151,11 @@ int io_fixed_fd_install(struct io_kiocb *req, unsigned int issue_flags,
 	return ret;
 }
 
+/*
+ * Membersihkan slot file tetap dan mereset node sumber daya terkait.
+ *
+ * Return: 0 jika sukses, kode error jika gagal
+ */
 int io_fixed_fd_remove(struct io_ring_ctx *ctx, unsigned int offset)
 {
 	struct io_rsrc_node *node;
@@ -136,6 +173,12 @@ int io_fixed_fd_remove(struct io_ring_ctx *ctx, unsigned int offset)
 	return 0;
 }
 
+/*
+ * Mengatur range alokasi khusus untuk file descriptor tetap.
+ * Memvalidasi input sebelum mengubah konfigurasi.
+ *
+ * Return: 0 jika sukses, kode error jika gagal
+ */
 int io_register_file_alloc_range(struct io_ring_ctx *ctx,
 				 struct io_uring_file_index_range __user *arg)
 {

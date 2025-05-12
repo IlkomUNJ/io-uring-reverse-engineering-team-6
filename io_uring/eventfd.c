@@ -25,6 +25,10 @@ enum {
 	IO_EVENTFD_OP_SIGNAL_BIT,
 };
 
+/*
+ * Fungsi callback yang dipanggil oleh RCU untuk membersihkan memori eventfd.
+ * Melepaskan eventfd context dan membebaskan memori struktur.
+ */
 static void io_eventfd_free(struct rcu_head *rcu)
 {
 	struct io_ev_fd *ev_fd = container_of(rcu, struct io_ev_fd, rcu);
@@ -33,12 +37,20 @@ static void io_eventfd_free(struct rcu_head *rcu)
 	kfree(ev_fd);
 }
 
+/*
+ * Mengurangi reference count dan memanggil pembersihan melalui RCU jika
+ * reference count mencapai nol.
+ */
 static void io_eventfd_put(struct io_ev_fd *ev_fd)
 {
 	if (refcount_dec_and_test(&ev_fd->refs))
 		call_rcu(&ev_fd->rcu, io_eventfd_free);
 }
 
+/*
+ * Fungsi callback RCU untuk melakukan signal eventfd setelah memastikan
+ * kondisi aman, kemudian melepaskan reference.
+ */
 static void io_eventfd_do_signal(struct rcu_head *rcu)
 {
 	struct io_ev_fd *ev_fd = container_of(rcu, struct io_ev_fd, rcu);
@@ -47,6 +59,10 @@ static void io_eventfd_do_signal(struct rcu_head *rcu)
 	io_eventfd_put(ev_fd);
 }
 
+/*
+ * Melepaskan kunci RCU dan reference count jika diperlukan setelah
+ * menyelesaikan operasi eventfd.
+ */
 static void io_eventfd_release(struct io_ev_fd *ev_fd, bool put_ref)
 {
 	if (put_ref)
@@ -55,7 +71,10 @@ static void io_eventfd_release(struct io_ev_fd *ev_fd, bool put_ref)
 }
 
 /*
- * Returns true if the caller should put the ev_fd reference, false if not.
+ * Mencoba melakukan signal eventfd langsung jika diizinkan, atau menjadwalkan
+ * melalui RCU jika tidak. Mengembalikan status apakah reference perlu dilepas.
+ *
+ * Return: true jika reference perlu dilepas, false jika tidak
  */
 static bool __io_eventfd_signal(struct io_ev_fd *ev_fd)
 {
@@ -71,8 +90,10 @@ static bool __io_eventfd_signal(struct io_ev_fd *ev_fd)
 }
 
 /*
- * Trigger if eventfd_async isn't set, or if it's set and the caller is
- * an async worker. If ev_fd isn't valid, obviously return false.
+ * Mengecek kondisi untuk menentukan apakah signal eventfd harus dipicu
+ * berdasarkan mode async dan konteks pekerja saat ini.
+ *
+ * Return: true jika perlu dipicu, false jika tidak
  */
 static bool io_eventfd_trigger(struct io_ev_fd *ev_fd)
 {
@@ -82,8 +103,10 @@ static bool io_eventfd_trigger(struct io_ev_fd *ev_fd)
 }
 
 /*
- * On success, returns with an ev_fd reference grabbed and the RCU read
- * lock held.
+ * Mengambil reference ke eventfd context dengan pengamanan RCU dan pengecekan
+ * status. Caller harus memanggil io_eventfd_release setelah selesai.
+ *
+ * Return: Pointer ke eventfd context atau NULL jika tidak valid
  */
 static struct io_ev_fd *io_eventfd_grab(struct io_ring_ctx *ctx)
 {
@@ -112,6 +135,11 @@ static struct io_ev_fd *io_eventfd_grab(struct io_ring_ctx *ctx)
 	return NULL;
 }
 
+/*
+ * Fungsi utama untuk memicu signal eventfd ketika ada completion event baru.
+ * Menggunakan io_eventfd_grab untuk mendapatkan context dan io_eventfd_release
+ * untuk membersihkan setelah selesai.
+ */
 void io_eventfd_signal(struct io_ring_ctx *ctx)
 {
 	struct io_ev_fd *ev_fd;
@@ -121,6 +149,11 @@ void io_eventfd_signal(struct io_ring_ctx *ctx)
 		io_eventfd_release(ev_fd, __io_eventfd_signal(ev_fd));
 }
 
+/*
+ * Versi signal yang lebih cerdas yang hanya memicu eventfd jika benar-benar
+ * ada CQE baru, untuk menghindari signal berlebihan. Memeriksa tail CQ ring
+ * terakhir untuk menentukan perlu tidaknya signal.
+ */
 void io_eventfd_flush_signal(struct io_ring_ctx *ctx)
 {
 	struct io_ev_fd *ev_fd;
@@ -133,10 +166,7 @@ void io_eventfd_flush_signal(struct io_ring_ctx *ctx)
 		 * Eventfd should only get triggered when at least one event
 		 * has been posted. Some applications rely on the eventfd
 		 * notification count only changing IFF a new CQE has been
-		 * added to the CQ ring. There's no dependency on 1:1
-		 * relationship between how many times this function is called
-		 * (and hence the eventfd count) and number of CQEs posted to
-		 * the CQ ring.
+		 * added to the CQ ring.
 		 */
 		spin_lock(&ctx->completion_lock);
 		skip = ctx->cached_cq_tail == ev_fd->last_cq_tail;
@@ -150,6 +180,12 @@ void io_eventfd_flush_signal(struct io_ring_ctx *ctx)
 	}
 }
 
+/*
+ * Mendaftarkan file descriptor eventfd baru untuk menerima notifikasi ketika
+ * ada completion event. Membuat struktur manajemen dan mengatur state awal.
+ *
+ * Return: 0 jika sukses, kode error jika gagal
+ */
 int io_eventfd_register(struct io_ring_ctx *ctx, void __user *arg,
 			unsigned int eventfd_async)
 {
@@ -189,6 +225,13 @@ int io_eventfd_register(struct io_ring_ctx *ctx, void __user *arg,
 	return 0;
 }
 
+/*
+ *
+ * Menghapus registrasi eventfd dari io_uring context dan membersihkan
+ * semua resource terkait. Memastikan tidak ada lagi signal yang dikirim.
+ *
+ * Return: 0 jika sukses, -ENXIO jika eventfd tidak terdaftar
+ */
 int io_eventfd_unregister(struct io_ring_ctx *ctx)
 {
 	struct io_ev_fd *ev_fd;
