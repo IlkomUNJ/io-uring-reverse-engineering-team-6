@@ -585,6 +585,7 @@ openclose.c | linux/kernel.h | WARN_ON_ONCE | 1
 | | internal (self-declared) | __io_close_fixed | 1 
 | | current macro | current->files | 1 
 | | linux/rlimit.h (implisit) | rlimit, RLIMIT_NOFILE | 1
+| poll.c | io_uring/cancel.c | lockdep_assert_held | 2 |
 
 
 ----------------------
