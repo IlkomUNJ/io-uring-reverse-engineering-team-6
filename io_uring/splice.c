@@ -24,6 +24,10 @@ struct io_splice {
 	struct io_rsrc_node		*rsrc_node;
 };
 
+// Menyiapkan permintaan splice dengan membaca parameter
+// dari sqe dan menyimpannya dalam struktur io_splice.
+// Memvalidasi flag dan memaksa eksekusi asynchronous. 
+// Mengembalikan 0 jika sukses, atau -EINVAL jika flag tidak valid.
 static int __io_splice_prep(struct io_kiocb *req,
 			    const struct io_uring_sqe *sqe)
 {
@@ -40,6 +44,8 @@ static int __io_splice_prep(struct io_kiocb *req,
 	return 0;
 }
 
+// Menyiapkan permintaan tee (duplikasi pipe) tanpa offset. Mengembalikan error jika offset tidak nol.
+// Delegasi persiapan selanjutnya ke __io_splice_prep.
 int io_tee_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	if (READ_ONCE(sqe->splice_off_in) || READ_ONCE(sqe->off))
@@ -47,6 +53,7 @@ int io_tee_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return __io_splice_prep(req, sqe);
 }
 
+// Membersihkan resource node dari permintaan splice jika sebelumnya disimpan saat eksekusi.
 void io_splice_cleanup(struct io_kiocb *req)
 {
 	struct io_splice *sp = io_kiocb_to_cmd(req, struct io_splice);
@@ -78,6 +85,8 @@ static struct file *io_splice_get_file(struct io_kiocb *req,
 	return file;
 }
 
+// Melakukan operasi tee (duplikasi data dari satu pipe ke pipe lain) dengan panjang tertentu.
+// Mengatur hasil ke dalam CQE dan menangani cleanup file jika perlu.
 int io_tee(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_splice *sp = io_kiocb_to_cmd(req, struct io_splice);
@@ -106,6 +115,8 @@ done:
 	return IOU_OK;
 }
 
+// Menyiapkan parameter untuk operasi splice termasuk offset input dan output dari sqe.
+// Delegasi bagian utama ke __io_splice_prep.
 int io_splice_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_splice *sp = io_kiocb_to_cmd(req, struct io_splice);
@@ -115,6 +126,8 @@ int io_splice_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return __io_splice_prep(req, sqe);
 }
 
+// Menjalankan operasi splice, yaitu memindahkan data dari satu file descriptor ke yang lain,
+// mendukung penggunaan offset dan validasi panjang data. Menyimpan hasilnya dalam CQE.
 int io_splice(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_splice *sp = io_kiocb_to_cmd(req, struct io_splice);
