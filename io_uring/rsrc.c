@@ -35,6 +35,10 @@ static struct io_rsrc_node *io_sqe_buffer_register(struct io_ring_ctx *ctx,
 
 #define IO_CACHED_BVECS_SEGS	32
 
+/* memeriksa apakah jumlah halaman memori yang akan digunakan oleh pengguna
+ * (user) melebihi batas yang diizinkan oleh limit memlock. Jika melebihi, fungsi akan mengembalikan -ENOMEM.
+ * Fmengelola pembaruan jumlah halaman yang terkunci secara atomik.
+ */
 int __io_account_mem(struct user_struct *user, unsigned long nr_pages)
 {
 	unsigned long page_limit, cur_pages, new_pages;
@@ -55,6 +59,11 @@ int __io_account_mem(struct user_struct *user, unsigned long nr_pages)
 	return 0;
 }
 
+/* mengurangi jumlah halaman memori yang telah
+ * dihitung sebelumnya. Jika konteks pengguna (`ctx->user`) ada, maka fungsi akan memanggil 
+ * `__io_unaccount_mem` untuk menyesuaikan akun memori pengguna. Selain itu, jika akun memori 
+ * untuk MM (memory management) ada, jumlah halaman yang dipin akan dikurangi.
+*/
 static void io_unaccount_mem(struct io_ring_ctx *ctx, unsigned long nr_pages)
 {
 	if (ctx->user)
@@ -64,6 +73,12 @@ static void io_unaccount_mem(struct io_ring_ctx *ctx, unsigned long nr_pages)
 		atomic64_sub(nr_pages, &ctx->mm_account->pinned_vm);
 }
 
+
+/*
+ * menambahkan jumlah halaman memori yang 
+ * digunakan dalam akun pengguna (`ctx->user`) dan akun MM (`ctx->mm_account`). Fungsi ini 
+ * memastikan bahwa memori yang digunakan tidak melebihi batas yang ditetapkan.
+*/
 static int io_account_mem(struct io_ring_ctx *ctx, unsigned long nr_pages)
 {
 	int ret;
@@ -104,6 +119,12 @@ int io_buffer_validate(struct iovec *iov)
 	return 0;
 }
 
+/* 
+ * membebaskan buffer pengguna yang telah dipetakan.
+ * Fungsi ini menerima parameter `priv` yang berisi informasi terkait buffer yang dipetakan 
+ * (`io_mapped_ubuf`). Setiap halaman buffer yang terkait dengan `bvec` dalam struktur ini 
+ * akan dibebaskan dengan memanggil `unpin_user_page` untuk masing-masing halaman.
+*/
 static void io_release_ubuf(void *priv)
 {
 	struct io_mapped_ubuf *imu = priv;
@@ -122,6 +143,12 @@ static struct io_mapped_ubuf *io_alloc_imu(struct io_ring_ctx *ctx,
 			GFP_KERNEL);
 }
 
+/*
+ * membebaskan memori yang digunakan oleh struktur `io_mapped_ubuf`.
+ * Jika jumlah segmen buffer (`nr_bvecs`) lebih kecil atau sama dengan nilai yang ditentukan oleh `IO_CACHED_BVECS_SEGS`,
+ * buffer tersebut akan dibebaskan melalui cache yang ada di konteks `ctx` menggunakan `io_cache_free`. 
+ * Jika jumlah segmennya lebih besar, memori akan dibebaskan menggunakan `kvfree`.
+*/
 static void io_free_imu(struct io_ring_ctx *ctx, struct io_mapped_ubuf *imu)
 {
 	if (imu->nr_bvecs <= IO_CACHED_BVECS_SEGS)
@@ -130,6 +157,8 @@ static void io_free_imu(struct io_ring_ctx *ctx, struct io_mapped_ubuf *imu)
 		kvfree(imu);
 }
 
+// mengurangi referensi buffer dan membebaskan memori jika tidak ada referensi lagi.
+// Jika ada, memori yang digunakan dibatalkan melalui `io_unaccount_mem` dan buffer dibebaskan.
 static void io_buffer_unmap(struct io_ring_ctx *ctx, struct io_mapped_ubuf *imu)
 {
 	if (!refcount_dec_and_test(&imu->refs))
@@ -141,6 +170,8 @@ static void io_buffer_unmap(struct io_ring_ctx *ctx, struct io_mapped_ubuf *imu)
 	io_free_imu(ctx, imu);
 }
 
+// mengalokasikan dan menginisialisasi node resource untuk
+// file atau buffer dalam konteks io_ring_ctx.
 struct io_rsrc_node *io_rsrc_node_alloc(struct io_ring_ctx *ctx, int type)
 {
 	struct io_rsrc_node *node;
@@ -155,6 +186,8 @@ struct io_rsrc_node *io_rsrc_node_alloc(struct io_ring_ctx *ctx, int type)
 	return node;
 }
 
+// menginisialisasi cache untuk node resource dan buffer yang terkait,
+// dengan ukuran yang ditentukan.
 bool io_rsrc_cache_init(struct io_ring_ctx *ctx)
 {
 	const int imu_cache_size = struct_size_t(struct io_mapped_ubuf, bvec,
@@ -169,12 +202,14 @@ bool io_rsrc_cache_init(struct io_ring_ctx *ctx)
 	return ret;
 }
 
+// membersihkan dan membebaskan cache untuk node resource dan buffer.
 void io_rsrc_cache_free(struct io_ring_ctx *ctx)
 {
 	io_alloc_cache_free(&ctx->node_cache, kfree);
 	io_alloc_cache_free(&ctx->imu_cache, kfree);
 }
 
+// membebaskan data resource yang dialokasikan, termasuk node resource yang terkait.
 __cold void io_rsrc_data_free(struct io_ring_ctx *ctx,
 			      struct io_rsrc_data *data)
 {
@@ -189,6 +224,7 @@ __cold void io_rsrc_data_free(struct io_ring_ctx *ctx,
 	data->nr = 0;
 }
 
+// mengalokasikan array untuk menyimpan pointer ke node resource dalam data resource.
 __cold int io_rsrc_data_alloc(struct io_rsrc_data *data, unsigned nr)
 {
 	data->nodes = kvmalloc_array(nr, sizeof(struct io_rsrc_node *),
@@ -200,6 +236,9 @@ __cold int io_rsrc_data_alloc(struct io_rsrc_data *data, unsigned nr)
 	return -ENOMEM;
 }
 
+// memperbarui file resource yang terkait dengan uring 
+// berdasarkan informasi dari pengguna, 
+// memeriksa kesalahan terkait file, dan menangani tag dan file yang valid.
 static int __io_sqe_files_update(struct io_ring_ctx *ctx,
 				 struct io_uring_rsrc_update2 *up,
 				 unsigned nr_args)
@@ -265,6 +304,8 @@ static int __io_sqe_files_update(struct io_ring_ctx *ctx,
 	return done ? done : err;
 }
 
+// Memperbarui tabel buffer dalam `io_ring_ctx` dengan menggunakan data buffer dari pengguna, memvalidasi buffer, 
+// dan mendaftarkan buffer baru dengan tag yang relevan.
 static int __io_sqe_buffers_update(struct io_ring_ctx *ctx,
 				   struct io_uring_rsrc_update2 *up,
 				   unsigned int nr_args)
@@ -322,6 +363,8 @@ static int __io_sqe_buffers_update(struct io_ring_ctx *ctx,
 	return done ? done : err;
 }
 
+// memperbarui berbagai jenis resource yang terdaftar, seperti file atau buffer, 
+// dengan memanggil pembaruan yang sesuai berdasarkan jenis resource.
 static int __io_register_rsrc_update(struct io_ring_ctx *ctx, unsigned type,
 				     struct io_uring_rsrc_update2 *up,
 				     unsigned nr_args)
@@ -342,6 +385,9 @@ static int __io_register_rsrc_update(struct io_ring_ctx *ctx, unsigned type,
 	return -EINVAL;
 }
 
+// memperbarui resource file dalam `io_ring_ctx` berdasarkan 
+// informasi yang diterima dari pengguna, 
+// dan memvalidasi data yang diterima.
 int io_register_files_update(struct io_ring_ctx *ctx, void __user *arg,
 			     unsigned nr_args)
 {
@@ -357,6 +403,8 @@ int io_register_files_update(struct io_ring_ctx *ctx, void __user *arg,
 	return __io_register_rsrc_update(ctx, IORING_RSRC_FILE, &up, nr_args);
 }
 
+// mengupdate resource berdasarkan jenisnya 
+// dan memastikan bahwa data yang diterima valid untuk jenis yang ditentukan.
 int io_register_rsrc_update(struct io_ring_ctx *ctx, void __user *arg,
 			    unsigned size, unsigned type)
 {
@@ -371,6 +419,8 @@ int io_register_rsrc_update(struct io_ring_ctx *ctx, void __user *arg,
 	return __io_register_rsrc_update(ctx, type, &up, up.nr);
 }
 
+// mendaftarkan resources baru untuk `io_ring_ctx`, dan memperbarui resources
+// yang ada sesuai dengan data yang diberikan, memastikan validitas ukuran dan flag yang diterima.
 __cold int io_register_rsrc(struct io_ring_ctx *ctx, void __user *arg,
 			    unsigned int size, unsigned int type)
 {
@@ -403,6 +453,8 @@ __cold int io_register_rsrc(struct io_ring_ctx *ctx, void __user *arg,
 	return -EINVAL;
 }
 
+// mempersiapkan data untuk pembaruan file terdaftar dari `sqe`,
+// dan menyimpannya ke dalam struktur `io_rsrc_update` di permintaan `req`.
 int io_files_update_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_rsrc_update *up = io_kiocb_to_cmd(req, struct io_rsrc_update);
@@ -420,6 +472,9 @@ int io_files_update_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return 0;
 }
 
+// memperbarui file terdaftar dengan indeks alokasi otomatis.
+// Mengambil file dari descriptor, lalu menggantinya dengan indeks tetap
+// yang dialokasikan dan dikembalikan ke pengguna.
 static int io_files_update_with_index_alloc(struct io_kiocb *req,
 					    unsigned int issue_flags)
 {
@@ -459,6 +514,9 @@ static int io_files_update_with_index_alloc(struct io_kiocb *req,
 	return ret;
 }
 
+// memperbarui resource file. Bisa menggunakan mode biasa
+// atau mode indeks otomatis (`IORING_FILE_INDEX_ALLOC`) untuk memperbarui file
+// yang terdaftar di ring context.
 int io_files_update(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_rsrc_update *up = io_kiocb_to_cmd(req, struct io_rsrc_update);
@@ -488,6 +546,8 @@ int io_files_update(struct io_kiocb *req, unsigned int issue_flags)
 	return IOU_OK;
 }
 
+// membebaskan node rsrc, melepaskan file atau buffer terkait,
+// dan mengirimkan CQE tambahan jika node memiliki tag.
 void io_free_rsrc_node(struct io_ring_ctx *ctx, struct io_rsrc_node *node)
 {
 	if (node->tag)
@@ -508,6 +568,8 @@ void io_free_rsrc_node(struct io_ring_ctx *ctx, struct io_rsrc_node *node)
 	io_cache_free(&ctx->node_cache, node);
 }
 
+// membatalkan (unregister) semua file yang telah didaftarkan di io_uring.
+// Jika belum ada file yang terdaftar, mengembalikan ENXIO.
 int io_sqe_files_unregister(struct io_ring_ctx *ctx)
 {
 	if (!ctx->file_table.data.nr)
@@ -518,6 +580,9 @@ int io_sqe_files_unregister(struct io_ring_ctx *ctx)
 	return 0;
 }
 
+// mendaftarkan file tetap (fixed files) dari user-space ke io_uring.
+// File dapat diberikan dalam bentuk array fd, dan opsional dengan tag.
+// Mendukung pendaftaran sparse (fd = -1), tetapi tag harus nol pada entri tersebut.
 int io_sqe_files_register(struct io_ring_ctx *ctx, void __user *arg,
 			  unsigned nr_args, u64 __user *tags)
 {
@@ -587,6 +652,8 @@ fail:
 	return ret;
 }
 
+// membatalkan (unregister) semua buffer yang telah didaftarkan di io_uring.
+// Jika belum ada buffer yang terdaftar, mengembalikan ENXIO.
 int io_sqe_buffers_unregister(struct io_ring_ctx *ctx)
 {
 	if (!ctx->buf_table.nr)
@@ -636,6 +703,11 @@ static bool headpage_already_acct(struct io_ring_ctx *ctx, struct page **pages,
 	return false;
 }
 
+// mencatat jumlah halaman memori yang dipin dari user-space ke dalam io_uring.
+// Halaman compound (misalnya hugepage) dihitung berdasarkan ukuran aslinya.
+// Menghindari duplikasi perhitungan untuk head page yang sama dengan memanfaatkan `last_hpage`.
+// Jika ada halaman yang harus dicatat, akan dilakukan akuntansi memori (memory accounting).
+// Mengembalikan 0 jika sukses, atau kode error dari `io_account_mem()` jika gagal.
 static int io_buffer_account_pin(struct io_ring_ctx *ctx, struct page **pages,
 				 int nr_pages, struct io_mapped_ubuf *imu,
 				 struct page **last_hpage)
@@ -837,6 +909,8 @@ done:
 	return node;
 }
 
+// Mendaftarkan buffer user ke io_uring sebagai resource I/O.
+// Mengembalikan 0 jika berhasil, atau kode error jika gagal.
 int io_sqe_buffers_register(struct io_ring_ctx *ctx, void __user *arg,
 			    unsigned int nr_args, u64 __user *tags)
 {
@@ -907,6 +981,9 @@ int io_sqe_buffers_register(struct io_ring_ctx *ctx, void __user *arg,
 	return ret;
 }
 
+// Mendaftarkan buffer dari bio_vec ke io_uring pada indeks tertentu.
+// Digunakan untuk I/O zero-copy dari kernel buffer.
+// Mengembalikan 0 jika sukses, atau kode error jika gagal.
 int io_buffer_register_bvec(struct io_uring_cmd *cmd, struct request *rq,
 			    void (*release)(void *), unsigned int index,
 			    unsigned int issue_flags)
@@ -969,6 +1046,8 @@ unlock:
 }
 EXPORT_SYMBOL_GPL(io_buffer_register_bvec);
 
+// Membatalkan pendaftaran buffer kernel pada indeks tertentu di io_uring.
+// Mengembalikan 0 jika sukses, atau kode error jika gagal.
 int io_buffer_unregister_bvec(struct io_uring_cmd *cmd, unsigned int index,
 			      unsigned int issue_flags)
 {
@@ -1002,6 +1081,8 @@ unlock:
 }
 EXPORT_SYMBOL_GPL(io_buffer_unregister_bvec);
 
+// Memvalidasi apakah alamat dan panjang buffer berada dalam rentang buffer tetap (fixed).
+// Mengembalikan 0 jika valid, atau -EFAULT jika tidak.
 static int validate_fixed_range(u64 buf_addr, size_t len,
 				const struct io_mapped_ubuf *imu)
 {
@@ -1102,6 +1183,10 @@ inline struct io_rsrc_node *io_find_buf_node(struct io_kiocb *req,
 	return node;
 }
 
+// Mengimpor buffer yang sudah terdaftar (registered buffer) ke dalam iterasi I/O.
+// Mencari node buffer dari permintaan (req), lalu memanggil io_import_fixed()
+// untuk mengatur `iter` agar menunjuk ke buffer tetap tersebut.
+// Mengembalikan 0 jika sukses, atau -EFAULT jika node tidak ditemukan
 int io_import_reg_buf(struct io_kiocb *req, struct iov_iter *iter,
 			u64 buf_addr, size_t len, int ddir,
 			unsigned issue_flags)
@@ -1276,6 +1361,7 @@ int io_register_clone_buffers(struct io_ring_ctx *ctx, void __user *arg)
 	return ret;
 }
 
+// Membebaskan memori iovec yang dialokasikan dalam struktur iou_vec.
 void io_vec_free(struct iou_vec *iv)
 {
 	if (!iv->iovec)
@@ -1285,6 +1371,7 @@ void io_vec_free(struct iou_vec *iv)
 	iv->nr = 0;
 }
 
+// Mengalokasikan ulang iovec dalam iou_vec sebanyak nr_entries elemen.
 int io_vec_realloc(struct iou_vec *iv, unsigned nr_entries)
 {
 	gfp_t gfp = GFP_KERNEL | __GFP_NOWARN;
@@ -1300,6 +1387,7 @@ int io_vec_realloc(struct iou_vec *iv, unsigned nr_entries)
 	return 0;
 }
 
+// Mengisi bio_vec dari buffer user-space berdasarkan iovec dan mapped_ubuf.
 static int io_vec_fill_bvec(int ddir, struct iov_iter *iter,
 				struct io_mapped_ubuf *imu,
 				struct iovec *iovec, unsigned nr_iovs,
@@ -1350,6 +1438,7 @@ static int io_vec_fill_bvec(int ddir, struct iov_iter *iter,
 	return 0;
 }
 
+// Menghitung jumlah segmen maksimal yang dibutuhkan dari iovec dan mapped_ubuf.
 static int io_estimate_bvec_size(struct iovec *iov, unsigned nr_iovs,
 				 struct io_mapped_ubuf *imu)
 {
@@ -1362,6 +1451,7 @@ static int io_estimate_bvec_size(struct iovec *iov, unsigned nr_iovs,
 	return max_segs;
 }
 
+// Mengisi bio_vec dari buffer kernel-space menggunakan iovec dan mapped_ubuf.
 static int io_vec_fill_kern_bvec(int ddir, struct iov_iter *iter,
 				 struct io_mapped_ubuf *imu,
 				 struct iovec *iovec, unsigned nr_iovs,
@@ -1390,6 +1480,7 @@ static int io_vec_fill_kern_bvec(int ddir, struct iov_iter *iter,
 	return 0;
 }
 
+// Menghitung jumlah segmen bio_vec untuk satu iovec di buffer kernel.
 static int iov_kern_bvec_size(const struct iovec *iov,
 			      const struct io_mapped_ubuf *imu,
 			      unsigned int *nr_seg)
@@ -1413,6 +1504,7 @@ static int iov_kern_bvec_size(const struct iovec *iov,
 	return 0;
 }
 
+// Menghitung jumlah total segmen bio_vec untuk beberapa iovec di buffer kernel.
 static int io_kern_bvec_size(struct iovec *iov, unsigned nr_iovs,
 			     struct io_mapped_ubuf *imu, unsigned *nr_segs)
 {
@@ -1438,6 +1530,7 @@ static int io_kern_bvec_size(struct iovec *iov, unsigned nr_iovs,
 	return 0;
 }
 
+// Mengimpor buffer tetap (registered) ke dalam bio_vec untuk operasi I/O.
 int io_import_reg_vec(int ddir, struct iov_iter *iter,
 			struct io_kiocb *req, struct iou_vec *vec,
 			unsigned nr_iovs, unsigned issue_flags)
@@ -1498,6 +1591,7 @@ int io_import_reg_vec(int ddir, struct iov_iter *iter,
 	return io_vec_fill_bvec(ddir, iter, imu, iov, nr_iovs, vec);
 }
 
+// Mengimpor iovec dari user-space dan menyimpannya ke dalam iou_vec.
 int io_prep_reg_iovec(struct io_kiocb *req, struct iou_vec *iv,
 		      const struct iovec __user *uvec, size_t uvec_segs)
 {

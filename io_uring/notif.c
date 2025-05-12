@@ -11,6 +11,12 @@
 
 static const struct ubuf_info_ops io_ubuf_ops;
 
+/*
+ * Menyelesaikan rantai notifikasi:
+ * - Tandai hasil jika zero-copy digunakan.
+ * - Bebaskan memori yang diakuntansi.
+ * - Panggil penyelesaian request.
+*/
 static void io_notif_tw_complete(struct io_kiocb *notif, io_tw_token_t tw)
 {
 	struct io_notif_data *nd = io_notif_to_data(notif);
@@ -33,6 +39,11 @@ static void io_notif_tw_complete(struct io_kiocb *notif, io_tw_token_t tw)
 	} while (nd);
 }
 
+/*
+ * Callback saat transmit selesai:
+ * - Tandai status zero-copy jika perlu.
+ * - Jika refcount habis dan ini adalah head, lanjutkan penyelesaian notifikasi.
+ */
 void io_tx_ubuf_complete(struct sk_buff *skb, struct ubuf_info *uarg,
 			 bool success)
 {
@@ -60,6 +71,12 @@ void io_tx_ubuf_complete(struct sk_buff *skb, struct ubuf_info *uarg,
 	__io_req_task_work_add(notif, tw_flags);
 }
 
+/*
+ * Menghubungkan notifikasi zero-copy baru ke sk_buff:
+ * - Inisialisasi jika belum ada zero-copy.
+ * - Cegah penggabungan tidak valid (diri sendiri, provider berbeda, konteks berbeda).
+ * - Rantai notifikasi agar selesai bersama.
+ */
 static int io_link_skb(struct sk_buff *skb, struct ubuf_info *uarg)
 {
 	struct io_notif_data *nd, *prev_nd;
@@ -104,6 +121,11 @@ static const struct ubuf_info_ops io_ubuf_ops = {
 	.link_skb = io_link_skb,
 };
 
+/*
+ * Mengalokasikan request notifikasi kosong (NOP) untuk operasi zero-copy:
+ * - Diinisialisasi dengan nilai default dan ubuf_info.
+ * - Digunakan untuk pelaporan atau penyelesaian deferred.
+ */
 struct io_kiocb *io_alloc_notif(struct io_ring_ctx *ctx)
 	__must_hold(&ctx->uring_lock)
 {
