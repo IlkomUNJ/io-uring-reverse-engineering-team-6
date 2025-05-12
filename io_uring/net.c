@@ -102,6 +102,7 @@ static int io_sg_from_iter_iovec(struct sk_buff *skb,
 static int io_sg_from_iter(struct sk_buff *skb,
 			   struct iov_iter *from, size_t length);
 
+/* Menyiapkan perintah shutdown dengan memvalidasi input dan menyetel parameter yang diperlukan. */
 int io_shutdown_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_shutdown *shutdown = io_kiocb_to_cmd(req, struct io_shutdown);
@@ -115,6 +116,8 @@ int io_shutdown_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return 0;
 }
 
+/* Menyiapkan perintah shutdown dan memvalidasi parameter yang diterima dari SQE. */
+ /* Menangani operasi shutdown pada soket dan mengembalikan hasilnya. */
 int io_shutdown(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_shutdown *shutdown = io_kiocb_to_cmd(req, struct io_shutdown);
@@ -132,12 +135,17 @@ int io_shutdown(struct io_kiocb *req, unsigned int issue_flags)
 	return IOU_OK;
 }
 
+/* Mengecek apakah socket mendukung pengulangan operasi berdasarkan flag MSG_WAITALL. */
+ /* Mengembalikan true jika socket adalah SOCK_STREAM atau SOCK_SEQPACKET. */
 static bool io_net_retry(struct socket *sock, int flags)
 {
 	if (!(flags & MSG_WAITALL))
 		return false;
 	return sock->type == SOCK_STREAM || sock->type == SOCK_SEQPACKET;
 }
+
+/* Membebaskan memori iovec pada io_async_msghdr jika ada. */
+ /* Menggunakan io_vec_free untuk membebaskan memori yang terkait. */
 
 static void io_netmsg_iovec_free(struct io_async_msghdr *kmsg)
 {
@@ -193,6 +201,9 @@ static inline void io_mshot_prep_retry(struct io_kiocb *req,
 	req->buf_index = sr->buf_group;
 }
 
+/* Mengimpor iovec dari pengguna ke dalam io_async_msghdr, 
+   menangani alokasi memori dan segmentasi. */
+ /* Mengatur segmen iovec dan iterasi pesan pada iomsg. */
 static int io_net_import_vec(struct io_kiocb *req, struct io_async_msghdr *iomsg,
 			     const struct iovec __user *uiov, unsigned uvec_seg,
 			     int ddir)
@@ -220,6 +231,11 @@ static int io_net_import_vec(struct io_kiocb *req, struct io_async_msghdr *iomsg
 	return 0;
 }
 
+/* Menyalin header pesan dari struktur kompatibilitas pengguna ke dalam 
+ *  struktur io_async_msghdr dan menangani alokasi buffer untuk iovec.
+ * Memverifikasi dan mengonversi data dari iovec kompatibilitas pengguna 
+ * sesuai dengan panjang yang diberikan dalam permintaan.
+*/
 static int io_compat_msg_copy_hdr(struct io_kiocb *req,
 				  struct io_async_msghdr *iomsg,
 				  struct compat_msghdr *msg, int ddir,
@@ -253,6 +269,8 @@ static int io_compat_msg_copy_hdr(struct io_kiocb *req,
 	return 0;
 }
 
+/* Menyalin data header pesan dari ruang pengguna ke dalam struktur kernel. */
+ /* Mengakses dan memverifikasi berbagai elemen pesan dari ruang pengguna. */
 static int io_copy_msghdr_from_user(struct user_msghdr *msg,
 				    struct user_msghdr __user *umsg)
 {
@@ -271,6 +289,8 @@ ua_end:
 	return -EFAULT;
 }
 
+/* Menyalin header pesan dari ruang pengguna, menangani kompatibilitas, dan mengatur data pesan. */
+ /* Mengatur data header pesan dan memeriksa panjang serta segmen I/O. */
 static int io_msg_copy_hdr(struct io_kiocb *req, struct io_async_msghdr *iomsg,
 			   struct user_msghdr *msg, int ddir,
 			   struct sockaddr __user **save_addr)
@@ -324,6 +344,8 @@ static int io_msg_copy_hdr(struct io_kiocb *req, struct io_async_msghdr *iomsg,
 	return 0;
 }
 
+/* Membersihkan dan membebaskan memori terkait dengan pesan jaringan setelah pengiriman atau penerimaan. */
+ /* Menghapus dan membebaskan buffer I/O terkait pesan. */
 void io_sendmsg_recvmsg_cleanup(struct io_kiocb *req)
 {
 	struct io_async_msghdr *io = req->async_data;
@@ -331,6 +353,8 @@ void io_sendmsg_recvmsg_cleanup(struct io_kiocb *req)
 	io_netmsg_iovec_free(io);
 }
 
+/* Menyiapkan pengaturan pengiriman pesan, termasuk pemrosesan alamat dan buffer. */
+ /* Mengatur parameter untuk pesan, termasuk pemindahan alamat ke kernel dan pemilihan buffer jika diperlukan. */
 static int io_send_setup(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_sr_msg *sr = io_kiocb_to_cmd(req, struct io_sr_msg);
@@ -396,6 +420,8 @@ static int io_sendmsg_setup(struct io_kiocb *req, const struct io_uring_sqe *sqe
 
 #define SENDMSG_FLAGS (IORING_RECVSEND_POLL_FIRST | IORING_RECVSEND_BUNDLE)
 
+/* Mempersiapkan pesan pengiriman dengan memvalidasi dan mengatur parameter terkait flag dan buffer. */
+ /* Mengonfigurasi pengaturan untuk pengiriman pesan, termasuk pengelolaan flags, alokasi buffer, dan validasi. */
 int io_sendmsg_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_sr_msg *sr = io_kiocb_to_cmd(req, struct io_sr_msg);
@@ -511,6 +537,8 @@ finish:
 	return true;
 }
 
+/* Mengirim pesan melalui soket dengan mempertimbangkan flag non-blocking, poll, dan kontrol pesan. */
+ /* Menangani pengiriman pesan, menangani kasus retry, dan menetapkan hasil ke request. */
 int io_sendmsg(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_sr_msg *sr = io_kiocb_to_cmd(req, struct io_sr_msg);
@@ -561,6 +589,8 @@ int io_sendmsg(struct io_kiocb *req, unsigned int issue_flags)
 	return IOU_OK;
 }
 
+/* Memilih buffer untuk pengiriman pesan berdasarkan pengaturan dan flag. */
+ /* Mengatur buffer untuk pengiriman pesan, menangani mode ekspansi dan pembersihan. */
 static int io_send_select_buffer(struct io_kiocb *req, unsigned int issue_flags,
 				 struct io_async_msghdr *kmsg)
 {
@@ -675,6 +705,8 @@ retry_bundle:
 	return ret;
 }
 
+/* Menyiapkan data untuk menerima pesan dengan mengatur panjang nama dan kontrol. */
+ /* Memeriksa apakah ada overflow saat menambahkan panjang header dan kontrol. */
 static int io_recvmsg_mshot_prep(struct io_kiocb *req,
 				 struct io_async_msghdr *iomsg,
 				 int namelen, size_t controllen)
@@ -699,6 +731,8 @@ static int io_recvmsg_mshot_prep(struct io_kiocb *req,
 	return 0;
 }
 
+/* Menyalin header pesan dan menyiapkan buffer untuk menerima data. */
+/* Memeriksa dan menyiapkan buffer untuk multishot dan pengolahan kontrol. */
 static int io_recvmsg_copy_hdr(struct io_kiocb *req,
 			       struct io_async_msghdr *iomsg)
 {
@@ -719,6 +753,8 @@ static int io_recvmsg_copy_hdr(struct io_kiocb *req,
 					msg.msg_controllen);
 }
 
+/* Menyiapkan struktur pesan untuk menerima data dengan buffer seleksi */
+/* Mengalokasikan buffer dan menyiapkan header pesan untuk operasi penerimaan. */
 static int io_recvmsg_prep_setup(struct io_kiocb *req)
 {
 	struct io_sr_msg *sr = io_kiocb_to_cmd(req, struct io_sr_msg);
@@ -958,6 +994,10 @@ static int io_recvmsg_multishot(struct socket *sock, struct io_sr_msg *io,
 			kmsg->controllen + err;
 }
 
+/* Menangani penerimaan pesan melalui soket dengan mempertimbangkan 
+   berbagai kondisi, seperti buffer seleksi, multishot, dan non-blocking. */
+/* Memeriksa soket dan menangani pengaturan pengiriman dan penerimaan pesan dengan 
+   berbagai pengaturan flag dan buffer yang sesuai. */
 int io_recvmsg(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_sr_msg *sr = io_kiocb_to_cmd(req, struct io_sr_msg);
@@ -1110,6 +1150,11 @@ map_ubuf:
 	return 0;
 }
 
+/*
+ * Menangani penerimaan pesan asinkron dari soket. 
+ * Memeriksa kondisi soket, mengatur buffer penerimaan pesan,
+ * dan menangani kondisi retry atau error seperti -EAGAIN dan -ERESTARTSYS.
+ */
 int io_recv(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_sr_msg *sr = io_kiocb_to_cmd(req, struct io_sr_msg);
@@ -1217,6 +1262,13 @@ int io_recvzc_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return 0;
 }
 
+/*
+ * menangani operasi penerimaan data dengan menggunakan zero-copy (io_recvzc).
+ * Pertama, memeriksa apakah socket valid, lalu mencoba menerima data dengan memanggil 
+ * `io_zcrx_recv`. Jika data berhasil diterima, hasilnya diset pada `cqe`. Jika terjadi 
+ * kesalahan selain -EAGAIN, status operasi diset ke gagal. Jika tidak ada data yang diterima, 
+ * status dikembalikan sebagai IOU_COMPLETE. Jika operasi perlu diulang, fungsi ini akan mengembalikan IOU_RETRY.
+*/
 int io_recvzc(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_recvzc *zc = io_kiocb_to_cmd(req, struct io_recvzc);
@@ -1253,6 +1305,11 @@ int io_recvzc(struct io_kiocb *req, unsigned int issue_flags)
 	return IOU_RETRY;
 }
 
+/*
+ * membersihkan sumber daya setelah operasi pengiriman zero-copy (io_send_zc).
+ * Jika data asinkron ada, maka iovec yang terkait akan dibebaskan. Jika ada notifikasi yang terkait
+ * dengan operasi ini, notifikasi tersebut akan dibersihkan dengan memanggil `io_notif_flush`.
+*/
 void io_send_zc_cleanup(struct io_kiocb *req)
 {
 	struct io_sr_msg *zc = io_kiocb_to_cmd(req, struct io_sr_msg);
@@ -1347,6 +1404,12 @@ static int io_sg_from_iter_iovec(struct sk_buff *skb,
 	return zerocopy_fill_skb_from_iter(skb, from, length);
 }
 
+/*
+ * mengisi struktur sk_buff dari iterator I/O (iov_iter) dengan fragmen-fragmen data.
+ * Jika skb tidak memiliki fragmen, ia akan mengatur flag SKBFL_MANAGED_FRAG_REFS. Jika fragmen sudah ada, ia
+ * akan mengisi skb dengan fragmen-fragmen baru dari iterator. Fungsi ini juga menghitung jumlah data yang telah
+ * disalin, ukuran yang benar (truesize), dan memperbarui informasi fragmen pada skb.
+*/
 static int io_sg_from_iter(struct sk_buff *skb,
 			   struct iov_iter *from, size_t length)
 {
@@ -1544,6 +1607,12 @@ int io_sendmsg_zc(struct io_kiocb *req, unsigned int issue_flags)
 	return IOU_OK;
 }
 
+/*
+ * menangani kegagalan untuk operasi send/recv, menetapkan nilai hasil (res) pada cqe berdasarkan 
+ * jumlah data yang telah diproses (sr->done_io). Jika ada kebutuhan untuk membersihkan (REQ_F_NEED_CLEANUP) dan 
+ * operasi adalah pengiriman zero-copy, flag IORING_CQE_F_MORE diatur untuk menunjukkan bahwa lebih banyak 
+ * data masih harus diproses.
+*/
 void io_sendrecv_fail(struct io_kiocb *req)
 {
 	struct io_sr_msg *sr = io_kiocb_to_cmd(req, struct io_sr_msg);
@@ -1559,6 +1628,11 @@ void io_sendrecv_fail(struct io_kiocb *req)
 #define ACCEPT_FLAGS	(IORING_ACCEPT_MULTISHOT | IORING_ACCEPT_DONTWAIT | \
 			 IORING_ACCEPT_POLL_FIRST)
 
+/*
+ * menyiapkan parameter untuk operasi accept socket, memvalidasi nilai dari berbagai field seperti alamat, panjang alamat, 
+ * dan flag untuk memastikan bahwa nilai-nilai tersebut valid sebelum melakukan operasi accept.
+ * Jika ditemukan nilai yang tidak valid, mengembalikan kesalahan, jika tidak, mengatur flag yang sesuai untuk operasi accept.
+*/
 int io_accept_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_accept *accept = io_kiocb_to_cmd(req, struct io_accept);
@@ -1593,6 +1667,12 @@ int io_accept_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return 0;
 }
 
+/*
+ * menangani permintaan untuk menerima koneksi soket (accept).
+ * Memeriksa apakah soket dapat diterima dalam mode non-blocking, dan mengelola pemrosesan kegagalan serta pengaturan file descriptor.
+ * Jika koneksi diterima, soket baru akan diinstal ke dalam file descriptor dan statusnya dikembalikan.
+ * Jika terjadi kegagalan, kode kesalahan yang sesuai dikembalikan.
+*/
 int io_accept(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_accept *accept = io_kiocb_to_cmd(req, struct io_accept);
@@ -1654,6 +1734,11 @@ retry:
 	return IOU_COMPLETE;
 }
 
+/*
+ * Fungsi ini mempersiapkan parameter untuk pembuatan soket berdasarkan permintaan IO_URING.
+ * Memastikan bahwa nilai-nilai seperti domain, tipe, protokol, dan file slot diatur dengan benar.
+ * Jika ada parameter yang tidak valid, mengembalikan -EINVAL.
+*/
 int io_socket_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_socket *sock = io_kiocb_to_cmd(req, struct io_socket);
@@ -1675,6 +1760,11 @@ int io_socket_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return 0;
 }
 
+/*
+ * membuat soket baru berdasarkan domain, tipe, dan protokol yang ditentukan dalam permintaan.
+ * Jika tidak menggunakan file slot tetap, ia mengalokasikan FD baru dan memasang soket ke file descriptor.
+ * Jika gagal membuat soket, mengembalikan kode kesalahan yang sesuai. Jika soket berhasil dibuat, soket akan diinstal pada FD yang tersedia.
+*/
 int io_socket(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_socket *sock = io_kiocb_to_cmd(req, struct io_socket);
@@ -1708,6 +1798,11 @@ int io_socket(struct io_kiocb *req, unsigned int issue_flags)
 	return IOU_OK;
 }
 
+/*
+ * mempersiapkan operasi connect dengan mengambil alamat dan panjang alamat dari SQE.
+ * Alamat tersebut dipindahkan dari ruang pengguna ke ruang kernel untuk diproses lebih lanjut.
+ * Jika ada kesalahan dalam persiapan atau alokasi memori, mengembalikan -ENOMEM atau -EINVAL.
+*/
 int io_connect_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_connect *conn = io_kiocb_to_cmd(req, struct io_connect);
@@ -1775,6 +1870,11 @@ out:
 	return IOU_OK;
 }
 
+/*
+ * mempersiapkan operasi bind dengan mengambil alamat dan panjang alamat dari SQE.
+ * Alamat tersebut kemudian dipindahkan dari ruang pengguna ke ruang kernel untuk diproses.
+ * Jika ada kesalahan dalam persiapan atau alokasi memori, mengembalikan -ENOMEM atau -EINVAL.
+*/
 int io_bind_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_bind *bind = io_kiocb_to_cmd(req, struct io_bind);
@@ -1793,6 +1893,10 @@ int io_bind_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return move_addr_to_kernel(uaddr, bind->addr_len, &io->addr);
 }
 
+/*
+ * melakukan operasi bind pada socket dengan alamat yang disediakan. 
+ * Jika socket tidak valid, mengembalikan -ENOTSOCK. Jika bind gagal, status request diatur sebagai gagal.
+*/
 int io_bind(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_bind *bind = io_kiocb_to_cmd(req, struct io_bind);
@@ -1811,6 +1915,12 @@ int io_bind(struct io_kiocb *req, unsigned int issue_flags)
 	return 0;
 }
 
+/*
+ * menyiapkan request untuk operasi listen dengan membaca backlog dari 
+ * `sqe->len`. Fungsi ini memeriksa apakah ada parameter yang tidak valid seperti 
+ * `addr`, `buf_index`, `rw_flags`, `splice_fd_in`, atau `addr2`, yang akan menyebabkan 
+ * pengembalian -EINVAL jika ada. Setelah validasi, nilai backlog diset ke dalam struct listen.
+*/
 int io_listen_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_listen *listen = io_kiocb_to_cmd(req, struct io_listen);
@@ -1822,6 +1932,12 @@ int io_listen_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return 0;
 }
 
+/*
+ * mendengarkan koneksi masuk dengan menggunakan 
+ * fungsi __sys_listen_socket, berdasarkan backlog yang ditentukan. Jika 
+ * socket tidak valid, mengembalikan -ENOTSOCK. Setelah mencoba untuk mendengarkan, 
+ * hasilnya diset ke dalam request.
+*/
 int io_listen(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_listen *listen = io_kiocb_to_cmd(req, struct io_listen);
@@ -1839,6 +1955,11 @@ int io_listen(struct io_kiocb *req, unsigned int issue_flags)
 	return 0;
 }
 
+/*
+ * membebaskan cache untuk pesan jaringan asinkron, 
+ * dengan membebaskan vektor I/O yang terkait dan kemudian menghapus memori 
+ * yang digunakan oleh struktur io_async_msghdr.
+*/
 void io_netmsg_cache_free(const void *entry)
 {
 	struct io_async_msghdr *kmsg = (struct io_async_msghdr *) entry;
