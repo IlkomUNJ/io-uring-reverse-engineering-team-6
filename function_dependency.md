@@ -1578,6 +1578,28 @@ openclose.c | linux/kernel.h | WARN_ON_ONCE | 1
 | | io_uring/zcrx.c | kunmap_local | 2 |
 | | io_uring/cancel.c | unlikely | 10 |
 | | io_uring/io_uring.c | roundup_pow_of_two | 1 |
+| advise.c | io_uring/advise.c | do_madvise | 1 |
+| | io_uring/advise.c | WARN_ON_ONCE | 2 |
+| | io_uring/advise.c | vfs_fadvise | 1 |
+| | io_uring/advise.c | io_req_set_res | 2 |
+| | io_uring/advise.c | READ_ONCE | 8 |
+| | io_uring/advise.c | req_set_fail | 1 |
+| | io_uring/advise.c | io_fadvise_force_async | 2 |
+| | io_uring/advise.c | io_kiocb_to_cmd | 4 |
+| alloc_cache.c | io_uring/alloc_cache.c | kvfree | 1 |
+| | io_uring/alloc_cache.c | free | 1 |
+| | io_uring/alloc_cache.c | io_alloc_cache_get | 1 |
+| | io_uring/alloc_cache.c | memset | 1 |
+| | io_uring/alloc_cache.c | kmalloc | 1 |
+| | io_uring/alloc_cache.c | kvmalloc_array | 1 |
+| alloc_cache.h | io_uring/alloc_cache.h | io_cache_alloc_new | 2 |
+| | io_uring/alloc_cache.h | kasan_mempool_unpoison_object | 1 |
+| | io_uring/alloc_cache.c | memset | 1 |
+| | io_uring/alloc_cache.h | kfree | 1 |
+| | io_uring/alloc_cache.h | io_alloc_cache_put | 1 |
+| | io_uring/alloc_cache.h | kasan_mempool_poison_object | 1 |
+| | io_uring/alloc_cache.c | io_alloc_cache_get | 1 |
+| | io_uring/alloc_cache.h | io_alloc_cache_init | 1 |
 
 
 ----------------------
