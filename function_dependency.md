@@ -687,6 +687,16 @@ openclose.c | linux/kernel.h | WARN_ON_ONCE | 1
 | | internal (self-declared) | __io_close_fixed | 1 
 | | current macro | current->files | 1 
 | | linux/rlimit.h (implisit) | rlimit, RLIMIT_NOFILE | 1
+openclose.h | openclose.h | __io_close_fixed | 1 
+| | io_openat_prep | 1 
+| | io_openat | 1 
+| | io_open_cleanup | 1 
+| | io_openat2_prep | 1 
+| | io_openat2 | 1 
+| | io_close_prep | 1 
+| | io_close | 1 
+| | io_install_fixed_fd_prep | 1 
+| | io_install_fixed_fd | 1
 | poll.c | io_uring/cancel.c | lockdep_assert_held | 2 |
 | | io_uring/alloc_cache.h | kfree | 2 |
 | | io_uring/poll.c | add_wait_queue_exclusive | 1 |
