@@ -17,4 +17,4 @@ Score is mainly calculated from individual contributions made to the commit. The
 - Reynaldi Aulia Sabri 1313623043 (@renalsabri)
 - Haqqi Triananda Afari 1313623038 (@HQi0)
 - Raja Nazwa Anugerah Pratama 1313623013 (@yezyihere1)
-- Hansen Nathaniel 1313623071 (@HansV123)
+- Hansen Nathaniel 1313623071 (@HansV125)
