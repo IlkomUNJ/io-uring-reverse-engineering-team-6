@@ -14,7 +14,7 @@ Score is mainly calculated from individual contributions made to the commit. The
 - [Task 4](/function_documentation.md)
 
 ## Team Members
-- Reynaldi Aulia Sabri 1313623043
-- Haqqi Triananda Afari 1313623038
-- Raja Nazwa Anugerah Pratama 1313623013
-- Hansen Nathaniel 1313623071
+- Reynaldi Aulia Sabri 1313623043 (@renalsabri)
+- Haqqi Triananda Afari 1313623038 (@HQi0)
+- Raja Nazwa Anugerah Pratama 1313623013 (@yezyihere1)
+- Hansen Nathaniel 1313623071 (@HansV123)
