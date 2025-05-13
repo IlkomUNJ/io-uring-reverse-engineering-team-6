@@ -68,6 +68,8 @@ void __io_uring_free(struct task_struct *tsk)
 	tsk->io_uring = NULL;
 }
 
+// Mengalokasikan dan menginisialisasi struktur io_uring_task untuk task tertentu.
+// Struktur ini menyimpan konteks io_uring per task yang dibutuhkan untuk pengelolaan request.
 __cold int io_uring_alloc_task_context(struct task_struct *task,
 				       struct io_ring_ctx *ctx)
 {
@@ -103,6 +105,8 @@ __cold int io_uring_alloc_task_context(struct task_struct *task,
 	return 0;
 }
 
+// Menambahkan node konteks io_uring (io_tctx_node) ke dalam struktur per-task (tctx).
+// Jika task belum punya konteks, maka akan dialokasikan terlebih dahulu.
 int __io_uring_add_tctx_node(struct io_ring_ctx *ctx)
 {
 	struct io_uring_task *tctx = current->io_uring;
@@ -145,6 +149,8 @@ int __io_uring_add_tctx_node(struct io_ring_ctx *ctx)
 	return 0;
 }
 
+// Versi dari __io_uring_add_tctx_node() yang dipanggil saat submit request.
+// Mengecek apakah mode SINGLE_ISSUER aktif dan memastikan hanya satu task yang bisa submit.
 int __io_uring_add_tctx_node_from_submit(struct io_ring_ctx *ctx)
 {
 	int ret;
@@ -187,6 +193,8 @@ __cold void io_uring_del_tctx_node(unsigned long index)
 	kfree(node);
 }
 
+// Membersihkan seluruh konteks io_uring milik sebuah task, termasuk node dan worker queue-nya.
+// Dipanggil saat task keluar atau tidak lagi menggunakan io_uring.
 __cold void io_uring_clean_tctx(struct io_uring_task *tctx)
 {
 	struct io_wq *wq = tctx->io_wq;
@@ -207,6 +215,8 @@ __cold void io_uring_clean_tctx(struct io_uring_task *tctx)
 	}
 }
 
+// Melepas semua ring file descriptor (ringfd) yang sebelumnya diregistrasikan oleh task.
+// Biasanya digunakan saat task selesai atau me-reset registrasi ringfd.
 void io_uring_unreg_ringfd(void)
 {
 	struct io_uring_task *tctx = current->io_uring;
@@ -220,6 +230,8 @@ void io_uring_unreg_ringfd(void)
 	}
 }
 
+// Menambahkan file io_uring ke slot ringfd yang tersedia dalam range tertentu.
+// Mengembalikan offset tempat file didaftarkan, atau -EBUSY jika tidak ada slot kosong.
 int io_ring_add_registered_file(struct io_uring_task *tctx, struct file *file,
 				     int start, int end)
 {
@@ -235,6 +247,8 @@ int io_ring_add_registered_file(struct io_uring_task *tctx, struct file *file,
 	return -EBUSY;
 }
 
+// Menambahkan file descriptor ke daftar registered ringfd milik task,
+// dengan validasi bahwa file memang file io_uring. Mengembalikan offset atau error.
 static int io_ring_add_registered_fd(struct io_uring_task *tctx, int fd,
 				     int start, int end)
 {
@@ -321,6 +335,8 @@ int io_ringfd_register(struct io_ring_ctx *ctx, void __user *__arg,
 	return i ? i : ret;
 }
 
+// Membatalkan (unregister) satu atau lebih ring file descriptor (ringfd) yang
+// sebelumnya didaftarkan oleh task saat menggunakan io_uring.
 int io_ringfd_unregister(struct io_ring_ctx *ctx, void __user *__arg,
 			 unsigned nr_args)
 {

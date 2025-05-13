@@ -20,6 +20,9 @@ struct io_statx {
 	struct statx __user		*buffer;
 };
 
+// Menyiapkan request untuk operasi statx. Memastikan parameter valid,
+// menyalin parameter dari sqe ke struktur internal, dan mengambil nama file
+// dari userspace. Request akan dipaksa menjadi async dan ditandai perlu cleanup.
 int io_statx_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_statx *sx = io_kiocb_to_cmd(req, struct io_statx);
@@ -50,6 +53,8 @@ int io_statx_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return 0;
 }
 
+// Menjalankan syscall statx dengan parameter yang telah disiapkan sebelumnya.
+// Hasil disimpan ke dalam request sebagai hasil operasi.
 int io_statx(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_statx *sx = io_kiocb_to_cmd(req, struct io_statx);
@@ -62,6 +67,8 @@ int io_statx(struct io_kiocb *req, unsigned int issue_flags)
 	return IOU_OK;
 }
 
+// Membersihkan resource yang dialokasikan selama tahap persiapan statx,
+// yaitu melepaskan nama file hasil getname_uflags().
 void io_statx_cleanup(struct io_kiocb *req)
 {
 	struct io_statx *sx = io_kiocb_to_cmd(req, struct io_statx);

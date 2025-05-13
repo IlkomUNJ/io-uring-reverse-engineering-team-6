@@ -39,18 +39,30 @@
 #include "truncate.h"
 #include "zcrx.h"
 
+/*
+ * Fungsi dummy jika operasi seharusnya tidak pernah diterbitkan (issued).
+ * Mengeluarkan peringatan dan membatalkan request dengan -ECANCELED.
+ */
 static int io_no_issue(struct io_kiocb *req, unsigned int issue_flags)
 {
 	WARN_ON_ONCE(1);
 	return -ECANCELED;
 }
 
+/*
+ * Fungsi prep dummy untuk operasi yang tidak didukung (operation not supported).
+ * Mengembalikan -EOPNOTSUPP sebagai penanda.
+ */
 static __maybe_unused int io_eopnotsupp_prep(struct io_kiocb *kiocb,
 					     const struct io_uring_sqe *sqe)
 {
 	return -EOPNOTSUPP;
 }
 
+/*
+mengasosiasikan setiap kode operasi io_uring 
+(seperti IORING_OP_READ, IORING_OP_WRITE, dll) dengan atribut dan fungsi penanganannya.
+*/
 const struct io_issue_def io_issue_defs[] = {
 	[IORING_OP_NOP] = {
 		.audit_skip		= 1,
@@ -817,6 +829,10 @@ const struct io_cold_def io_cold_defs[] = {
 	},
 };
 
+/*
+ * Mengembalikan nama operasi io_uring berdasarkan nilai opcode.
+ * Jika opcode tidak valid, akan mengembalikan string "INVALID".
+ */
 const char *io_uring_get_opcode(u8 opcode)
 {
 	if (opcode < IORING_OP_LAST)
@@ -824,6 +840,11 @@ const char *io_uring_get_opcode(u8 opcode)
 	return "INVALID";
 }
 
+
+/*
+ * Mengecek apakah suatu opcode operasi io_uring didukung.
+ * Operasi dianggap tidak didukung jika fungsi prep-nya adalah io_eopnotsupp_prep.
+ */
 bool io_uring_op_supported(u8 opcode)
 {
 	if (opcode < IORING_OP_LAST &&
@@ -832,6 +853,11 @@ bool io_uring_op_supported(u8 opcode)
 	return false;
 }
 
+/*
+ * Inisialisasi tabel operasi io_uring saat booting.
+ * Memastikan setiap entri memiliki fungsi 'prep', dan jika bukan dummy (io_eopnotsupp_prep),
+ * juga harus memiliki fungsi 'issue'. Nama pada 'cold_defs' juga harus tersedia.
+ */
 void __init io_uring_optable_init(void)
 {
 	int i;

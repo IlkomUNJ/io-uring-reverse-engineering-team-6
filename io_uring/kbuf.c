@@ -51,6 +51,17 @@ static bool io_kbuf_inc_commit(struct io_buffer_list *bl, int len)
 	return true;
 }
 
+/*
+ * Menyelesaikan (commit) penggunaan buffer oleh sebuah request (`io_kiocb`) setelah operasi I/O selesai.
+ * Fungsi ini akan memeriksa apakah flag `REQ_F_BUFFERS_COMMIT` disetel pada request, yang menandakan bahwa
+ * buffer perlu dikomit (misalnya pada kasus buffer ring atau manajemen buffer otomatis).
+ *
+ * Jika flag tersebut tidak disetel atau panjang (`len`) negatif, fungsi mengembalikan true tanpa melakukan apa-apa.
+ * Jika daftar buffer (`io_buffer_list`) memiliki flag `IOBL_INC`, maka pemrosesan dilakukan melalui
+ * `io_kbuf_inc_commit`. Jika tidak, pointer head pada daftar buffer ditambahkan sebanyak jumlah buffer yang dipakai (`nr`).
+ *
+ * Return: true, selalu mengembalikan true sebagai status sukses komit buffer.
+*/
 bool io_kbuf_commit(struct io_kiocb *req,
 		    struct io_buffer_list *bl, int len, int nr)
 {
@@ -192,6 +203,16 @@ static void __user *io_ring_buffer_select(struct io_kiocb *req, size_t *len,
 	return ret;
 }
 
+/*
+ * memilih buffer yang akan digunakan untuk request `io_kiocb` tertentu.
+ * Pemilihan buffer dapat dilakukan dari `buffer ring` atau dari buffer yang disediakan
+ * langsung (`provided buffer`), tergantung pada flag pada daftar buffer (`io_buffer_list`).
+ * 
+ * Fungsi ini mengunci konteks submission terlebih dahulu untuk memastikan konsistensi saat 
+ * memilih buffer, lalu membuka kembali setelah selesai.
+ *
+ * Return: Alamat user-space dari buffer yang dipilih, atau NULL jika tidak tersedia.
+ */
 void __user *io_buffer_select(struct io_kiocb *req, size_t *len,
 			      unsigned int issue_flags)
 {
@@ -363,6 +384,17 @@ static inline bool __io_put_kbuf_ring(struct io_kiocb *req, int len, int nr)
 	return ret;
 }
 
+
+/*
+ * memproses buffer dalam konteks `io_uring` 
+ * dan menyiapkan status untuk kueri yang akan diberikan kembali kepada 
+ * pengguna. Fungsi ini juga memeriksa apakah buffer berada dalam mode 
+ * `buffer ring` dan memperbarui status kueri jika ada buffer tambahan 
+ * yang perlu diproses.
+ * 
+ * Return: Mengembalikan status kueri yang telah diperbarui, termasuk 
+ * tanda bahwa lebih banyak buffer perlu diproses jika berlaku.
+*/
 unsigned int __io_put_kbufs(struct io_kiocb *req, int len, int nbufs)
 {
 	unsigned int ret;
@@ -525,6 +557,17 @@ int io_provide_buffers_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe
 	return 0;
 }
 
+/*
+ * menambahkan buffer ke dalam daftar buffer 
+ * dalam grup buffer (`io_buffer_list`). Fungsi ini mengalokasikan 
+ * memori untuk setiap buffer baru berdasarkan informasi yang diberikan 
+ * oleh pengguna, kemudian menambahkannya ke dalam daftar. 
+ * Jika terjadi kegagalan dalam mengalokasikan memori untuk buffer, 
+ * fungsi ini akan mengembalikan kode kesalahan yang sesuai.
+ *
+ * Return: 0 jika berhasil menambahkan buffer, atau nilai negatif 
+ * jika terjadi kesalahan.
+*/
 static int io_add_buffers(struct io_ring_ctx *ctx, struct io_provide_buf *pbuf,
 			  struct io_buffer_list *bl)
 {
@@ -671,6 +714,16 @@ fail:
 	return ret;
 }
 
+/*
+ * membatalkan pendaftaran grup buffer dalam 
+ * konteks `io_uring`. Fungsi ini memeriksa apakah status grup buffer valid, 
+ * kemudian menghapus grup buffer tersebut dari daftar yang terdaftar. 
+ * Jika ada kesalahan dalam data yang diterima atau grup buffer tidak valid, 
+ * fungsi ini akan mengembalikan kode kesalahan yang sesuai.
+ * 
+ * Return: 0 jika pembatalan pendaftaran grup buffer berhasil, 
+ * nilai negatif jika terjadi kesalahan.
+*/
 int io_unregister_pbuf_ring(struct io_ring_ctx *ctx, void __user *arg)
 {
 	struct io_uring_buf_reg reg;
@@ -698,6 +751,17 @@ int io_unregister_pbuf_ring(struct io_ring_ctx *ctx, void __user *arg)
 	return 0;
 }
 
+
+/*
+ * mendaftarkan status buffer dalam konteks 
+ * `io_uring`. Fungsi ini akan memeriksa apakah status buffer valid dan 
+ * menyalin informasi terkait buffer ke pengguna jika valid. Jika ada kesalahan 
+ * dalam data yang diterima dari pengguna atau status buffer tidak valid, 
+ * fungsi ini akan mengembalikan kode kesalahan yang sesuai.
+ * 
+ * Return: 0 jika pendaftaran status buffer berhasil, nilai negatif jika 
+ * terjadi kesalahan.
+*/
 int io_register_pbuf_status(struct io_ring_ctx *ctx, void __user *arg)
 {
 	struct io_uring_buf_status buf_status;

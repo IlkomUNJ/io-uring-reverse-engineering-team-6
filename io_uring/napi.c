@@ -122,12 +122,17 @@ static void __io_napi_remove_stale(struct io_ring_ctx *ctx)
 	}
 }
 
+/* Menghapus entri napi yang kedaluwarsa jika `is_stale` bernilai true. */
 static inline void io_napi_remove_stale(struct io_ring_ctx *ctx, bool is_stale)
 {
 	if (is_stale)
 		__io_napi_remove_stale(ctx);
 }
 
+/*
+ Memeriksa apakah waktu yang telah berlalu sejak `start_time` melebihi durasi timeout `bp`.
+ Mengembalikan `true` jika waktu telah habis, atau `bp` tidak diatur.
+*/
 static inline bool io_napi_busy_loop_timeout(ktime_t start_time,
 					     ktime_t bp)
 {
@@ -141,6 +146,12 @@ static inline bool io_napi_busy_loop_timeout(ktime_t start_time,
 	return true;
 }
 
+
+/*
+ * memeriksa apakah loop sibuk NAPI harus dihentikan berdasarkan beberapa kondisi,
+ * seperti sinyal yang tertunda, pekerjaan yang perlu diproses, atau batas waktu yang tercapai. 
+ * Jika salah satu kondisi terpenuhi, mengembalikan `true` untuk menghentikan loop. 
+*/
 static bool io_napi_busy_loop_should_end(void *data,
 					 unsigned long start_time)
 {
@@ -172,6 +183,11 @@ static bool static_tracking_do_busy_loop(struct io_ring_ctx *ctx,
 	return false;
 }
 
+/*
+ * melakukan loop sibuk dinamis pada setiap entri NAPI dalam daftar, 
+ * an memeriksa apakah entri tersebut sudah kadaluarsa berdasarkan waktu. 
+ * Jika ada entri yang kadaluarsa, mengembalikan nilai `true`, jika tidak, mengembalikan `false`.
+*/
 static bool
 dynamic_tracking_do_busy_loop(struct io_ring_ctx *ctx,
 			      bool (*loop_end)(void *, unsigned long),
@@ -191,6 +207,10 @@ dynamic_tracking_do_busy_loop(struct io_ring_ctx *ctx,
 	return is_stale;
 }
 
+/* melakukan loop sibuk pada mode pelacakan NAPI yang dipilih (statik atau dinamik).
+ * Berdasarkan mode pelacakan, fungsi ini memilih antara `static_tracking_do_busy_loop`
+ * atau `dynamic_tracking_do_busy_loop`.
+*/
 static inline bool
 __io_napi_do_busy_loop(struct io_ring_ctx *ctx,
 		       bool (*loop_end)(void *, unsigned long),

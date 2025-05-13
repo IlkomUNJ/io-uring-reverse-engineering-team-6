@@ -15,6 +15,7 @@
 #include "io_uring.h"
 #include "fs.h"
 
+/* Struktur data untuk operasi rename */
 struct io_rename {
 	struct file			*file;
 	int				old_dfd;
@@ -24,6 +25,7 @@ struct io_rename {
 	int				flags;
 };
 
+/* Struktur data untuk operasi unlink */
 struct io_unlink {
 	struct file			*file;
 	int				dfd;
@@ -31,6 +33,7 @@ struct io_unlink {
 	struct filename			*filename;
 };
 
+/* Struktur data untuk operasi mkdir */
 struct io_mkdir {
 	struct file			*file;
 	int				dfd;
@@ -38,6 +41,7 @@ struct io_mkdir {
 	struct filename			*filename;
 };
 
+/* Struktur data untuk operasi link dan symlink */
 struct io_link {
 	struct file			*file;
 	int				old_dfd;
@@ -47,6 +51,12 @@ struct io_link {
 	int				flags;
 };
 
+/*
+ * Fungsi ini memvalidasi dan mengekstrak parameter rename dari SQE.
+ * Mengambil nama file dari userspace dan menyiapkan struktur untuk operasi.
+ *
+ * Return: 0 jika sukses, kode error jika parameter tidak valid
+ */
 int io_renameat_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_rename *ren = io_kiocb_to_cmd(req, struct io_rename);
@@ -78,6 +88,12 @@ int io_renameat_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return 0;
 }
 
+/*
+ * Fungsi ini menjalankan operasi rename file/directory menggunakan parameter
+ * yang telah dipersiapkan. Selalu dijalankan secara synchronous.
+ *
+ * Return: IOU_OK untuk menunjukkan penyelesaian operasi
+ */
 int io_renameat(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_rename *ren = io_kiocb_to_cmd(req, struct io_rename);
@@ -93,6 +109,10 @@ int io_renameat(struct io_kiocb *req, unsigned int issue_flags)
 	return IOU_OK;
 }
 
+/*
+ * Fungsi ini membebaskan memori yang dialokasikan untuk nama file
+ * setelah operasi rename selesai.
+ */
 void io_renameat_cleanup(struct io_kiocb *req)
 {
 	struct io_rename *ren = io_kiocb_to_cmd(req, struct io_rename);
@@ -101,6 +121,12 @@ void io_renameat_cleanup(struct io_kiocb *req)
 	putname(ren->newpath);
 }
 
+/*
+ * Mengekstrak parameter unlink dari SQE dan memvalidasinya.
+ * Mendukung penghapusan file dan directory (dengan flag AT_REMOVEDIR).
+ *
+ * Return: 0 jika sukses, kode error jika parameter tidak valid
+ */
 int io_unlinkat_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_unlink *un = io_kiocb_to_cmd(req, struct io_unlink);
@@ -112,7 +138,6 @@ int io_unlinkat_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 		return -EBADF;
 
 	un->dfd = READ_ONCE(sqe->fd);
-
 	un->flags = READ_ONCE(sqe->unlink_flags);
 	if (un->flags & ~AT_REMOVEDIR)
 		return -EINVAL;
@@ -127,6 +152,12 @@ int io_unlinkat_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return 0;
 }
 
+/*
+ * Menghapus file atau directory berdasarkan parameter yang telah dipersiapkan.
+ * Memilih antara do_rmdir atau do_unlinkat berdasarkan flag.
+ *
+ * Return: IOU_OK untuk menunjukkan penyelesaian operasi
+ */
 int io_unlinkat(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_unlink *un = io_kiocb_to_cmd(req, struct io_unlink);
@@ -144,6 +175,9 @@ int io_unlinkat(struct io_kiocb *req, unsigned int issue_flags)
 	return IOU_OK;
 }
 
+/*
+ * Membebaskan memori yang dialokasikan untuk nama file setelah operasi selesai.
+ */
 void io_unlinkat_cleanup(struct io_kiocb *req)
 {
 	struct io_unlink *ul = io_kiocb_to_cmd(req, struct io_unlink);
@@ -151,6 +185,12 @@ void io_unlinkat_cleanup(struct io_kiocb *req)
 	putname(ul->filename);
 }
 
+/*
+ * Mengekstrak parameter pembuatan directory dari SQE dan memvalidasinya.
+ * Termasuk file descriptor parent directory, mode permission, dan nama directory.
+ *
+ * Return: 0 jika sukses, kode error jika parameter tidak valid
+ */
 int io_mkdirat_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_mkdir *mkd = io_kiocb_to_cmd(req, struct io_mkdir);
@@ -174,6 +214,12 @@ int io_mkdirat_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return 0;
 }
 
+/*
+ * Membuat directory baru dengan parameter yang telah dipersiapkan.
+ * Selalu dijalankan secara synchronous.
+ *
+ * Return: IOU_OK untuk menunjukkan penyelesaian operasi
+ */
 int io_mkdirat(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_mkdir *mkd = io_kiocb_to_cmd(req, struct io_mkdir);
@@ -188,6 +234,9 @@ int io_mkdirat(struct io_kiocb *req, unsigned int issue_flags)
 	return IOU_OK;
 }
 
+/*
+ * Membebaskan memori yang dialokasikan untuk nama directory setelah operasi selesai.
+ */
 void io_mkdirat_cleanup(struct io_kiocb *req)
 {
 	struct io_mkdir *md = io_kiocb_to_cmd(req, struct io_mkdir);
@@ -195,6 +244,16 @@ void io_mkdirat_cleanup(struct io_kiocb *req)
 	putname(md->filename);
 }
 
+/**
+ * io_symlinkat_prep - Mempersiapkan permintaan symlink
+ * @req: Permintaan IO
+ * @sqe: Entry dari submission queue
+ *
+ * Mengekstrak parameter pembuatan symlink dari SQE, termasuk path target
+ * dan path link yang akan dibuat.
+ *
+ * Return: 0 jika sukses, kode error jika parameter tidak valid
+ */
 int io_symlinkat_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_link *sl = io_kiocb_to_cmd(req, struct io_link);
@@ -224,6 +283,11 @@ int io_symlinkat_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return 0;
 }
 
+/*
+ * Membuat symbolic link baru dengan parameter yang telah dipersiapkan.
+ *
+ * Return: IOU_OK untuk menunjukkan penyelesaian operasi
+ */
 int io_symlinkat(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_link *sl = io_kiocb_to_cmd(req, struct io_link);
@@ -238,6 +302,12 @@ int io_symlinkat(struct io_kiocb *req, unsigned int issue_flags)
 	return IOU_OK;
 }
 
+/*
+ * Mengekstrak parameter pembuatan hard link dari SQE, termasuk file sumber
+ * dan file target yang akan dibuat.
+ *
+ * Return: 0 jika sukses, kode error jika parameter tidak valid
+ */
 int io_linkat_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_link *lnk = io_kiocb_to_cmd(req, struct io_link);
@@ -269,6 +339,11 @@ int io_linkat_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return 0;
 }
 
+/*
+ * Membuat hard link baru dengan parameter yang telah dipersiapkan.
+ *
+ * Return: IOU_OK untuk menunjukkan penyelesaian operasi
+ */
 int io_linkat(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_link *lnk = io_kiocb_to_cmd(req, struct io_link);
@@ -284,6 +359,10 @@ int io_linkat(struct io_kiocb *req, unsigned int issue_flags)
 	return IOU_OK;
 }
 
+/*
+ * Membebaskan memori yang dialokasikan untuk nama file setelah operasi selesai.
+ * Digunakan baik untuk hard link maupun symbolic link.
+ */
 void io_link_cleanup(struct io_kiocb *req)
 {
 	struct io_link *sl = io_kiocb_to_cmd(req, struct io_link);

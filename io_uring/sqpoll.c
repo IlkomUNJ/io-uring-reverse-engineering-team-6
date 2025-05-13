@@ -43,6 +43,8 @@ void io_sq_thread_unpark(struct io_sq_data *sqd)
 	wake_up(&sqd->wait);
 }
 
+// Meminta thread submission queue untuk parkir dengan memberi sinyal dan membangunkan thread jika aktif.
+// Menahan mutex sqd->lock untuk sinkronisasi. Fungsi ini digunakan saat SQ thread akan dihentikan sementara.
 void io_sq_thread_park(struct io_sq_data *sqd)
 	__acquires(&sqd->lock)
 {
@@ -55,6 +57,8 @@ void io_sq_thread_park(struct io_sq_data *sqd)
 		wake_up_process(sqd->thread);
 }
 
+// Menghentikan thread submission queue secara permanen dengan memberi sinyal stop, membangunkan thread,
+// dan menunggu hingga thread selesai keluar. Digunakan saat SQ thread tidak lagi dibutuhkan.
 void io_sq_thread_stop(struct io_sq_data *sqd)
 {
 	WARN_ON_ONCE(sqd->thread == current);
@@ -68,6 +72,8 @@ void io_sq_thread_stop(struct io_sq_data *sqd)
 	wait_for_completion(&sqd->exited);
 }
 
+// Mengurangi referensi sqd, dan jika sudah nol, akan menghentikan thread SQ dan membebaskan memori.
+// Digunakan untuk cleanup struktur io_sq_data saat tidak lagi digunakan.
 void io_put_sq_data(struct io_sq_data *sqd)
 {
 	if (refcount_dec_and_test(&sqd->refs)) {
@@ -78,6 +84,8 @@ void io_put_sq_data(struct io_sq_data *sqd)
 	}
 }
 
+// Menghitung nilai maksimal dari waktu idle thread SQ yang ditentukan dari semua konteks dalam daftar sqd.
+// Nilai ini digunakan untuk menentukan waktu thread SQ akan diparkir berdasarkan aktivitas.
 static __cold void io_sqd_update_thread_idle(struct io_sq_data *sqd)
 {
 	struct io_ring_ctx *ctx;
@@ -155,11 +163,16 @@ static struct io_sq_data *io_get_sq_data(struct io_uring_params *p,
 	return sqd;
 }
 
+// Mengecek apakah ada event pada SQD yang tertunda dengan membaca nilai state.
+// Jika state bernilai non-nol, maka ada flag aktif seperti park atau stop.
 static inline bool io_sqd_events_pending(struct io_sq_data *sqd)
 {
 	return READ_ONCE(sqd->state);
 }
 
+// mengeksekusi submission dan polling jika diperlukan.
+// Akan mengatasi batasan fairness jika cap_entries aktif, dan tidak melakukan submit
+// jika referensi sedang sekarat atau ring dalam mode disabled.
 static int __io_sq_thread(struct io_ring_ctx *ctx, bool cap_entries)
 {
 	unsigned int to_submit;
@@ -198,6 +211,8 @@ static int __io_sq_thread(struct io_ring_ctx *ctx, bool cap_entries)
 	return ret;
 }
 
+// Menangani event pada thread SQ seperti permintaan parkir atau sinyal dari user-space.
+// Jika perlu parkir, thread akan tidur sampai park_pending bernilai nol dan memperbarui CPU SQ.
 static bool io_sqd_handle_event(struct io_sq_data *sqd)
 {
 	bool did_sig = false;
@@ -239,6 +254,8 @@ out:
 	return count;
 }
 
+// Mengecek apakah terdapat task work (TW) yang masih tertunda di retry_list
+// atau task_list milik thread io_uring saat ini belum kosong.
 static bool io_sq_tw_pending(struct llist_node *retry_list)
 {
 	struct io_uring_task *tctx = current->io_uring;
@@ -246,6 +263,8 @@ static bool io_sq_tw_pending(struct llist_node *retry_list)
 	return retry_list || !llist_empty(&tctx->task_list);
 }
 
+// Menghitung dan menambahkan waktu kerja thread SQ berdasarkan selisih antara waktu sekarang
+// dan waktu awal (start) yang dicatat sebelum loop kerja SQ.
 static void io_sq_update_worktime(struct io_sq_data *sqd, struct rusage *start)
 {
 	struct rusage end;
@@ -257,6 +276,8 @@ static void io_sq_update_worktime(struct io_sq_data *sqd, struct rusage *start)
 	sqd->work_time += end.ru_stime.tv_usec + end.ru_stime.tv_sec * 1000000;
 }
 
+// Fungsi utama thread SQPOLL, menangani loop kerja dengan pengambilan dan eksekusi submission,
+// polling, task work, serta penanganan event seperti parkir atau sinyal keluar.
 static int io_sq_thread(void *data)
 {
 	struct llist_node *retry_list = NULL;
@@ -389,6 +410,8 @@ err_out:
 	do_exit(0);
 }
 
+// Menunggu hingga submission queue (SQ) tidak penuh, digunakan oleh pengguna untuk
+// menunggu slot tersedia ketika SQ dalam mode polling aktif.
 void io_sqpoll_wait_sq(struct io_ring_ctx *ctx)
 {
 	DEFINE_WAIT(wait);
@@ -406,6 +429,9 @@ void io_sqpoll_wait_sq(struct io_ring_ctx *ctx)
 	finish_wait(&ctx->sqo_sq_wait, &wait);
 }
 
+// Membuat thread SQPOLL untuk io_uring bila diperlukan, dan menghubungkannya
+// ke context yang bersangkutan. Menangani setup afinitas CPU jika diminta,
+// serta menjaga agar SQPOLL thread tidak dalam kondisi sekarat saat digunakan.
 __cold int io_sq_offload_create(struct io_ring_ctx *ctx,
 				struct io_uring_params *p)
 {
@@ -508,6 +534,8 @@ err:
 	return ret;
 }
 
+// Mengatur afinitas CPU thread SQPOLL berdasarkan mask CPU yang diberikan,
+// hanya jika thread masih aktif dan tidak dalam kondisi akan dihentikan.
 __cold int io_sqpoll_wq_cpu_affinity(struct io_ring_ctx *ctx,
 				     cpumask_var_t mask)
 {

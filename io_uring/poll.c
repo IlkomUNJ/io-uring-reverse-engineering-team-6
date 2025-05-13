@@ -56,6 +56,9 @@ struct io_poll_table {
 static int io_poll_wake(struct wait_queue_entry *wait, unsigned mode, int sync,
 			void *key);
 
+/* Mengembalikan pointer ke struct io_kiocb dari wait_queue_entry, 
+ * dengan menghapus flag IO_WQE_F_DOUBLE dari nilai private.
+ */
 static inline struct io_kiocb *wqe_to_req(struct wait_queue_entry *wqe)
 {
 	unsigned long priv = (unsigned long)wqe->private;
@@ -63,6 +66,10 @@ static inline struct io_kiocb *wqe_to_req(struct wait_queue_entry *wqe)
 	return (struct io_kiocb *)(priv & ~IO_WQE_F_DOUBLE);
 }
 
+
+/* Mengecek apakah entri wait queue memiliki flag IO_WQE_F_DOUBLE. 
+ * Mengembalikan true jika ya, false jika tidak.
+ */
 static inline bool wqe_is_double(struct wait_queue_entry *wqe)
 {
 	unsigned long priv = (unsigned long)wqe->private;
@@ -98,6 +105,9 @@ static inline bool io_poll_get_ownership(struct io_kiocb *req)
 	return !(atomic_fetch_inc(&req->poll_refs) & IO_POLL_REF_MASK);
 }
 
+/* Menandai permintaan poll sebagai dibatalkan 
+ * dengan menyetel bit IO_POLL_CANCEL_FLAG secara atomik.
+ */
 static void io_poll_mark_cancelled(struct io_kiocb *req)
 {
 	atomic_or(IO_POLL_CANCEL_FLAG, &req->poll_refs);
@@ -118,6 +128,9 @@ static struct io_poll *io_poll_get_single(struct io_kiocb *req)
 	return &req->apoll->poll;
 }
 
+/* Menyisipkan permintaan poll ke dalam tabel hash pembatalan berdasarkan user_data.
+ * Digunakan agar permintaan dapat ditemukan dan dibatalkan dengan efisien.
+ */
 static void io_poll_req_insert(struct io_kiocb *req)
 {
 	struct io_hash_table *table = &req->ctx->cancel_table;
@@ -128,6 +141,9 @@ static void io_poll_req_insert(struct io_kiocb *req)
 	hlist_add_head(&req->hash_node, &table->hbs[index].list);
 }
 
+/* Menginisialisasi struktur io_poll dengan event poll tertentu,
+ * serta menyetel fungsi wakeup dan entri antrian tunggu.
+ */
 static void io_init_poll_iocb(struct io_poll *poll, __poll_t events)
 {
 	poll->head = NULL;
@@ -138,6 +154,9 @@ static void io_init_poll_iocb(struct io_poll *poll, __poll_t events)
 	init_waitqueue_func_entry(&poll->wait, io_poll_wake);
 }
 
+/* Menghapus entri io_poll dari antrian tunggu jika masih terdaftar,
+ * dengan sinkronisasi dan penguncian untuk keamanan akses data bersama.
+ */
 static inline void io_poll_remove_entry(struct io_poll *poll)
 {
 	struct wait_queue_head *head = smp_load_acquire(&poll->head);
@@ -190,6 +209,9 @@ enum {
 	IOU_POLL_REQUEUE = 4,
 };
 
+/* Menyimpan hasil polling dan menjadwalkan task work untuk menangani event I/O,
+ * dengan kemungkinan menggunakan lazy wake jika diperbolehkan.
+ */
 static void __io_poll_execute(struct io_kiocb *req, int mask)
 {
 	unsigned flags = 0;
@@ -204,6 +226,9 @@ static void __io_poll_execute(struct io_kiocb *req, int mask)
 	__io_req_task_work_add(req, flags);
 }
 
+/* Mengeksekusi hasil polling jika req masih memiliki kepemilikan eksekusi.
+ * Memastikan hanya satu eksekusi terjadi untuk request ini.
+ */
 static inline void io_poll_execute(struct io_kiocb *req, int res)
 {
 	if (io_poll_get_ownership(req))
@@ -312,6 +337,9 @@ static int io_poll_check_events(struct io_kiocb *req, io_tw_token_t tw)
 	return IOU_POLL_NO_ACTION;
 }
 
+/* Fungsi eksekusi kerja (task work) untuk request polling.
+ * Menangani hasil polling: sukses, antrian ulang, re-issue, atau kegagalan.
+ */
 void io_poll_task_func(struct io_kiocb *req, io_tw_token_t tw)
 {
 	int ret;
@@ -357,6 +385,9 @@ void io_poll_task_func(struct io_kiocb *req, io_tw_token_t tw)
 	}
 }
 
+/* Fungsi untuk membatalkan request polling.
+ * Menandai request sebagai dibatalkan dan menjalankan eksekusi polling.
+ */
 static void io_poll_cancel_req(struct io_kiocb *req)
 {
 	io_poll_mark_cancelled(req);
@@ -511,6 +542,9 @@ static void __io_queue_proc(struct io_poll *poll, struct io_poll_table *pt,
 	}
 }
 
+/* Fungsi untuk memproses antrian polling dan menambahkan polling ke dalam hash.
+ * Mengambil informasi dari tabel polling dan memprosesnya lebih lanjut.
+ */
 static void io_poll_queue_proc(struct file *file, struct wait_queue_head *head,
 			       struct poll_table_struct *p)
 {
@@ -521,12 +555,18 @@ static void io_poll_queue_proc(struct file *file, struct wait_queue_head *head,
 			(struct io_poll **) &pt->req->async_data);
 }
 
+/* Mengecek apakah polling bisa selesai secara inline. 
+ * Jika polling sudah dimiliki atau memiliki kepemilikan, maka bisa selesai inline.
+ */
 static bool io_poll_can_finish_inline(struct io_kiocb *req,
 				      struct io_poll_table *pt)
 {
 	return pt->owning || io_poll_get_ownership(req);
 }
 
+
+/* Menambahkan polling ke dalam hash setelah memastikan request berada dalam antrian.
+ */
 static void io_poll_add_hash(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_ring_ctx *ctx = req->ctx;
@@ -627,6 +667,9 @@ static int __io_arm_poll_handler(struct io_kiocb *req,
 	return 0;
 }
 
+/* Fungsi untuk memproses antrian polling asynchronous dan menambahkannya ke dalam hash. 
+ * Mengambil informasi dari tabel polling dan memprosesnya lebih lanjut.
+ */
 static void io_async_queue_proc(struct file *file, struct wait_queue_head *head,
 			       struct poll_table_struct *p)
 {
@@ -669,6 +712,12 @@ static struct async_poll *io_req_alloc_apoll(struct io_kiocb *req,
 	return apoll;
 }
 
+/* menyiapkan dan menangani polling pada IO. Fungsi ini 
+ * mengatur bit-bit polling seperti mask untuk input dan output, 
+ * serta memastikan apakah polling dapat dilakukan untuk file terkait.
+ * Selain itu, juga menangani pengalokasian dan pemrosesan untuk 
+ * asynchronous poll (apoll).
+ */
 int io_arm_poll_handler(struct io_kiocb *req, unsigned issue_flags)
 {
 	const struct io_issue_def *def = &io_issue_defs[req->opcode];
@@ -779,6 +828,10 @@ static struct io_kiocb *io_poll_file_find(struct io_ring_ctx *ctx,
 	return NULL;
 }
 
+/* Membatalkan (disarm) polling pada IO request.
+ * Menghapus entri polling dan menghapus node hash 
+ * jika polling telah diaktifkan untuk request ini.
+ */
 static int io_poll_disarm(struct io_kiocb *req)
 {
 	if (!req)
@@ -790,6 +843,9 @@ static int io_poll_disarm(struct io_kiocb *req)
 	return 0;
 }
 
+/* membatalkan polling IO request berdasarkan data pembatalan.
+ * mencari request polling dan membatalkannya jika ditemukan.
+ */
 static int __io_poll_cancel(struct io_ring_ctx *ctx, struct io_cancel_data *cd)
 {
 	struct io_kiocb *req;
@@ -807,6 +863,7 @@ static int __io_poll_cancel(struct io_ring_ctx *ctx, struct io_cancel_data *cd)
 	return -ENOENT;
 }
 
+/* Membatalkan polling request dengan mengunci dan membuka kunci submit ring. */
 int io_poll_cancel(struct io_ring_ctx *ctx, struct io_cancel_data *cd,
 		   unsigned issue_flags)
 {
@@ -818,6 +875,7 @@ int io_poll_cancel(struct io_ring_ctx *ctx, struct io_cancel_data *cd,
 	return ret;
 }
 
+/* Memparsing event polling dari SQE dan mengembalikan nilai event yang sesuai. */
 static __poll_t io_poll_parse_events(const struct io_uring_sqe *sqe,
 				     unsigned int flags)
 {
@@ -835,6 +893,7 @@ static __poll_t io_poll_parse_events(const struct io_uring_sqe *sqe,
 		(events & (EPOLLEXCLUSIVE|EPOLLONESHOT|EPOLLET));
 }
 
+/* Mempersiapkan operasi penghapusan polling dalam IO uring */
 int io_poll_remove_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_poll_update *upd = io_kiocb_to_cmd(req, struct io_poll_update);
@@ -865,6 +924,7 @@ int io_poll_remove_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return 0;
 }
 
+/* Mempersiapkan operasi penambahan polling dalam IO uring. */
 int io_poll_add_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_poll *poll = io_kiocb_to_cmd(req, struct io_poll);
@@ -882,6 +942,7 @@ int io_poll_add_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return 0;
 }
 
+/* menambahkan operasi polling dalam IO uring */
 int io_poll_add(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_poll *poll = io_kiocb_to_cmd(req, struct io_poll);
@@ -898,6 +959,7 @@ int io_poll_add(struct io_kiocb *req, unsigned int issue_flags)
 	return ret ?: IOU_ISSUE_SKIP_COMPLETE;
 }
 
+/* Menghapus operasi polling dalam IO uring */
 int io_poll_remove(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_poll_update *poll_update = io_kiocb_to_cmd(req, struct io_poll_update);

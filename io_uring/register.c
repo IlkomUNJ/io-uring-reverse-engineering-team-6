@@ -35,6 +35,7 @@
 #define IORING_MAX_RESTRICTIONS	(IORING_RESTRICTION_LAST + \
 				 IORING_REGISTER_LAST + IORING_OP_LAST)
 
+/* Mengecek operasi io_uring yang didukung kernel. */
 static __cold int io_probe(struct io_ring_ctx *ctx, void __user *arg,
 			   unsigned nr_args)
 {
@@ -74,6 +75,7 @@ out:
 	return ret;
 }
 
+/* Menghapus kredensial yang terdaftar di io_uring. */
 int io_unregister_personality(struct io_ring_ctx *ctx, unsigned id)
 {
 	const struct cred *creds;
@@ -87,7 +89,7 @@ int io_unregister_personality(struct io_ring_ctx *ctx, unsigned id)
 	return -EINVAL;
 }
 
-
+/* Mendaftarkan kredensial proses sebagai personality. */
 static int io_register_personality(struct io_ring_ctx *ctx)
 {
 	const struct cred *creds;
@@ -105,6 +107,10 @@ static int io_register_personality(struct io_ring_ctx *ctx)
 	return id;
 }
 
+/*
+ * Memproses dan menerapkan batasan operasi io_uring dari pengguna.
+ * Mencakup validasi opcode, flags SQE yang diperbolehkan atau diwajibkan.
+ */
 static __cold int io_parse_restrictions(void __user *arg, unsigned int nr_args,
 					struct io_restriction *restrictions)
 {
@@ -201,6 +207,10 @@ static int io_register_enable_rings(struct io_ring_ctx *ctx)
 	return 0;
 }
 
+/*
+ * Mengatur afinitas CPU untuk io-wq berdasarkan konfigurasi konteks.
+ * Berbeda penanganan jika menggunakan SQPOLL atau tidak.
+ */
 static __cold int __io_register_iowq_aff(struct io_ring_ctx *ctx,
 					 cpumask_var_t new_mask)
 {
@@ -217,6 +227,10 @@ static __cold int __io_register_iowq_aff(struct io_ring_ctx *ctx,
 	return ret;
 }
 
+/*
+ * Menerima dan menyalin cpumask dari pengguna, lalu menerapkannya ke io-wq.
+ * Memastikan memori cpumask valid dan bebas dari kesalahan salin.
+ */
 static __cold int io_register_iowq_aff(struct io_ring_ctx *ctx,
 				       void __user *arg, unsigned len)
 {
@@ -249,11 +263,19 @@ static __cold int io_register_iowq_aff(struct io_ring_ctx *ctx,
 	return ret;
 }
 
+/*
+ * Melepaskan pengaturan afinitas CPU yang sebelumnya diterapkan pada io-wq.
+ * Cukup memanggil ulang fungsi afinitas dengan mask kosong (NULL).
+ */
 static __cold int io_unregister_iowq_aff(struct io_ring_ctx *ctx)
 {
 	return __io_register_iowq_aff(ctx, NULL);
 }
 
+/*
+ * Mendaftarkan batas jumlah pekerja maksimum untuk io-wq pada sebuah konteks.
+ * Berlaku untuk SQPOLL dan non-SQPOLL, serta menyebarkan batas ke semua thread terkait.
+ */
 static __cold int io_register_iowq_max_workers(struct io_ring_ctx *ctx,
 					       void __user *arg)
 	__must_hold(&ctx->uring_lock)
@@ -340,6 +362,10 @@ err:
 	return ret;
 }
 
+/*
+ * Mendaftarkan jenis clock yang akan digunakan dalam operasi io_uring.
+ * Mendukung CLOCK_MONOTONIC dan CLOCK_BOOTTIME, lalu menyimpan offset-nya ke konteks.
+ */
 static int io_register_clock(struct io_ring_ctx *ctx,
 			     struct io_uring_clock_register __user *arg)
 {
@@ -377,6 +403,8 @@ struct io_ring_ctx_rings {
 	struct io_mapped_region ring_region;
 };
 
+//membebaskan sumber daya yang digunakan oleh area memori
+// untuk ring buffer (sq_region dan ring_region) pada konteks io_ring_ctx yang diberikan.
 static void io_register_free_rings(struct io_ring_ctx *ctx,
 				   struct io_uring_params *p,
 				   struct io_ring_ctx_rings *r)

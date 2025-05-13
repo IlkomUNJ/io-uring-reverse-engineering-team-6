@@ -33,6 +33,12 @@ struct io_msg {
 	u32 flags;
 };
 
+/*
+ * membuka mutex `uring_lock` pada konteks io_uring.
+ * Nama fungsi menyiratkan bahwa fungsi ini digunakan dalam situasi di mana
+ * kunci sebelumnya telah diambil dua kali atau dalam pengelolaan berlapis,
+ * meskipun di sini hanya melakukan satu kali `mutex_unlock`.
+*/
 static void io_double_unlock_ctx(struct io_ring_ctx *octx)
 {
 	mutex_unlock(&octx->uring_lock);
@@ -55,6 +61,13 @@ static int io_lock_external_ctx(struct io_ring_ctx *octx,
 	return 0;
 }
 
+/*
+ * membersihkan referensi ke file sumber dalam
+ * struktur pesan `io_msg` yang terkait dengan permintaan `req`.
+ * Jika `src_file` tidak diset, fungsi akan memperingatkan (melalui `WARN_ON_ONCE`)
+ * dan keluar tanpa melakukan apa pun. Jika diset, akan memanggil `fput()` untuk
+ * mengurangi referensi file dan mengatur `src_file` menjadi NULL.
+*/
 void io_msg_ring_cleanup(struct io_kiocb *req)
 {
 	struct io_msg *msg = io_kiocb_to_cmd(req, struct io_msg);
@@ -71,6 +84,7 @@ static inline bool io_msg_need_remote(struct io_ring_ctx *target_ctx)
 	return target_ctx->task_complete;
 }
 
+// Menyelesaikan request message ring dengan task_work dan membebaskan memori jika perlu
 static void io_msg_tw_complete(struct io_kiocb *req, io_tw_token_t tw)
 {
 	struct io_ring_ctx *ctx = req->ctx;
@@ -86,6 +100,8 @@ static void io_msg_tw_complete(struct io_kiocb *req, io_tw_token_t tw)
 	percpu_ref_put(&ctx->refs);
 }
 
+
+// Mengirimkan pesan ke context io_uring lain secara asynchronous
 static int io_msg_remote_post(struct io_ring_ctx *ctx, struct io_kiocb *req,
 			      int res, u32 cflags, u64 user_data)
 {
@@ -104,6 +120,8 @@ static int io_msg_remote_post(struct io_ring_ctx *ctx, struct io_kiocb *req,
 	return 0;
 }
 
+/* Mengambil io_kiocb dari cache pesan context jika memungkinkan, jika tidak, alokasikan baru.  
+ * Menggunakan spinlock untuk sinkronisasi akses ke cache. */
 static struct io_kiocb *io_msg_get_kiocb(struct io_ring_ctx *ctx)
 {
 	struct io_kiocb *req = NULL;
@@ -117,6 +135,8 @@ static struct io_kiocb *io_msg_get_kiocb(struct io_ring_ctx *ctx)
 	return kmem_cache_alloc(req_cachep, GFP_KERNEL | __GFP_NOWARN | __GFP_ZERO);
 }
 
+/* Kirim data pesan ke context io_uring target secara remote menggunakan struktur io_kiocb.  
+ * Gunakan io_msg_get_kiocb untuk mengambil request dan io_msg_remote_post untuk posting. */
 static int io_msg_data_remote(struct io_ring_ctx *target_ctx,
 			      struct io_msg *msg)
 {
@@ -134,6 +154,8 @@ static int io_msg_data_remote(struct io_ring_ctx *target_ctx,
 					msg->user_data);
 }
 
+/* Tangani pengiriman data pesan ke io_uring target, baik lokal maupun remote.  
+ * Validasi parameter pesan dan posting CQE sesuai flags dan konfigurasi context. */
 static int __io_msg_ring_data(struct io_ring_ctx *target_ctx,
 			      struct io_msg *msg, unsigned int issue_flags)
 {
@@ -165,6 +187,9 @@ static int __io_msg_ring_data(struct io_ring_ctx *target_ctx,
 	return ret;
 }
 
+/* Wrapper fungsi untuk __io_msg_ring_data dengan mengambil context dari file target.  
+ * Konversi io_kiocb ke io_msg dan teruskan ke handler internal.
+*/
 static int io_msg_ring_data(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_ring_ctx *target_ctx = req->file->private_data;
@@ -173,6 +198,8 @@ static int io_msg_ring_data(struct io_kiocb *req, unsigned int issue_flags)
 	return __io_msg_ring_data(target_ctx, msg, issue_flags);
 }
 
+/* Ambil file sumber dari file_table berdasarkan file descriptor (src_fd).  
+ * Jika ditemukan, simpan ke src_file dan tandai request perlu cleanup. */
 static int io_msg_grab_file(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_msg *msg = io_kiocb_to_cmd(req, struct io_msg);
@@ -225,6 +252,8 @@ out_unlock:
 	return ret;
 }
 
+/* Selesaikan pengiriman file descriptor via task_work;  
+ * Bila gagal, tandai request sebagai gagal dan lanjutkan completion. */
 static void io_msg_tw_fd_complete(struct callback_head *head)
 {
 	struct io_msg *msg = container_of(head, struct io_msg, tw);
@@ -238,6 +267,8 @@ static void io_msg_tw_fd_complete(struct callback_head *head)
 	io_req_queue_tw_complete(req, ret);
 }
 
+/* Kirim file descriptor secara remote menggunakan task_work ke task submitter.  
+ * Inisialisasi task_work dan tambahkan ke antrean target task. */
 static int io_msg_fd_remote(struct io_kiocb *req)
 {
 	struct io_ring_ctx *ctx = req->file->private_data;
@@ -254,6 +285,8 @@ static int io_msg_fd_remote(struct io_kiocb *req)
 	return IOU_ISSUE_SKIP_COMPLETE;
 }
 
+/* Kirim file descriptor ke io_uring context target.  
+ * Validasi dan ambil file jika belum tersedia, lalu kirim secara lokal atau remote. */
 static int io_msg_send_fd(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_ring_ctx *target_ctx = req->file->private_data;
@@ -277,6 +310,7 @@ static int io_msg_send_fd(struct io_kiocb *req, unsigned int issue_flags)
 	return io_msg_install_complete(req, issue_flags);
 }
 
+/* Persiapkan data untuk pesan io_uring dengan memvalidasi dan mengatur properti berdasarkan sqe. */
 static int __io_msg_ring_prep(struct io_msg *msg, const struct io_uring_sqe *sqe)
 {
 	if (unlikely(sqe->buf_index || sqe->personality))
@@ -300,6 +334,9 @@ int io_msg_ring_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return __io_msg_ring_prep(io_kiocb_to_cmd(req, struct io_msg), sqe);
 }
 
+/* memproses perintah dari io_uring, seperti pengiriman data atau file descriptor. 
+ * Jika perintah tidak valid, akan mengembalikan kesalahan atau hasil eksekusi sesuai kondisi.
+*/
 int io_msg_ring(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_msg *msg = io_kiocb_to_cmd(req, struct io_msg);

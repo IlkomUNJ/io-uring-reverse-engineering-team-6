@@ -2,6 +2,7 @@
 #ifndef IOU_OP_DEF_H
 #define IOU_OP_DEF_H
 
+//struktur ini men-"define" kemampuan dan penangan untuk setiap operasi io_uring
 struct io_issue_def {
 	/* needs req->file assigned */
 	unsigned		needs_file : 1;
@@ -35,17 +36,25 @@ struct io_issue_def {
 	int (*prep)(struct io_kiocb *, const struct io_uring_sqe *);
 };
 
+//struktur ini untuk mendefinisikan penangan pembersih dan penangan gagal untuk operasi IO
 struct io_cold_def {
+	/*nama dari operasi*/
 	const char		*name;
 
+	/*pointer fungsi untuk menangani pembersihan setelah operasi IO*/
 	void (*cleanup)(struct io_kiocb *);
+	/*pointer fungsi untuk menangani skenario terjadinya kegagalan dalam operasi IO*/
 	void (*fail)(struct io_kiocb *);
 };
 
+//array external yang berisi semua definisi io_issue_def
 extern const struct io_issue_def io_issue_defs[];
+//array eksternal yang berisi semua definisi io_cold_def
 extern const struct io_cold_def io_cold_defs[];
 
+//mengecek apakah opcode yang ada terdukung oleh konfigurasi kernel yang ada
 bool io_uring_op_supported(u8 opcode);
 
+//menginisialisasi tabel operasi untuk io_uring
 void io_uring_optable_init(void);
 #endif

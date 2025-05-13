@@ -32,6 +32,8 @@ struct io_waitid {
 	struct waitid_info info;
 };
 
+// Membebaskan memori dan referensi PID untuk operasi `waitid`.
+// Menghapus `async_data` dan menandai bahwa permintaan (`req`) tidak lagi memiliki data asinkron.
 static void io_waitid_free(struct io_kiocb *req)
 {
 	struct io_waitid_async *iwa = req->async_data;
@@ -42,6 +44,7 @@ static void io_waitid_free(struct io_kiocb *req)
 	req->flags &= ~REQ_F_ASYNC_DATA;
 }
 
+// menyalin hasil waitid ke user space untuk arsitektur 32-bit (compat)
 static bool io_waitid_compat_copy_si(struct io_waitid *iw, int signo)
 {
 	struct compat_siginfo __user *infop;
@@ -67,6 +70,7 @@ Efault:
 	goto done;
 }
 
+// menyalin hasil waitid ke user space (baik native maupun compat)
 static bool io_waitid_copy_si(struct io_kiocb *req, int signo)
 {
 	struct io_waitid *iw = io_kiocb_to_cmd(req, struct io_waitid);
@@ -96,6 +100,7 @@ Efault:
 	goto done;
 }
 
+// Menyelesaikan operasi waitid dan membebaskan resource
 static int io_waitid_finish(struct io_kiocb *req, int ret)
 {
 	int signo = 0;
@@ -111,6 +116,7 @@ static int io_waitid_finish(struct io_kiocb *req, int ret)
 	return ret;
 }
 
+// Menyelesaikan dan menghapus permintaan waitid dari antrian
 static void io_waitid_complete(struct io_kiocb *req, int ret)
 {
 	struct io_waitid *iw = io_kiocb_to_cmd(req, struct io_waitid);
@@ -151,12 +157,14 @@ static bool __io_waitid_cancel(struct io_kiocb *req)
 	return true;
 }
 
+// Membatalkan satu operasi io_waitid yang cocok dengan data pembatalan
 int io_waitid_cancel(struct io_ring_ctx *ctx, struct io_cancel_data *cd,
 		     unsigned int issue_flags)
 {
 	return io_cancel_remove(ctx, cd, issue_flags, &ctx->waitid_list, __io_waitid_cancel);
 }
 
+// Menghapus semua permintaan io_waitid dari antrian untuk sebuah task
 bool io_waitid_remove_all(struct io_ring_ctx *ctx, struct io_uring_task *tctx,
 			  bool cancel_all)
 {
@@ -220,6 +228,7 @@ static void io_waitid_cb(struct io_kiocb *req, io_tw_token_t tw)
 	io_req_task_complete(req, tw);
 }
 
+// Callback yang dipanggil ketika anak proses memenuhi kondisi bangun dari wait queue
 static int io_waitid_wait(struct wait_queue_entry *wait, unsigned mode,
 			  int sync, void *key)
 {
@@ -242,6 +251,7 @@ static int io_waitid_wait(struct wait_queue_entry *wait, unsigned mode,
 	return 1;
 }
 
+// Menyiapkan request io_waitid berdasarkan data dari submission queue entry
 int io_waitid_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_waitid *iw = io_kiocb_to_cmd(req, struct io_waitid);

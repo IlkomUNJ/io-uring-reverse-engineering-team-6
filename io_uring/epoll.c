@@ -26,6 +26,14 @@ struct io_epoll_wait {
 	struct epoll_event __user	*events;
 };
 
+/*
+ * Fungsi ini membaca parameter dari SQE dan memvalidasinya sebelum digunakan
+ * untuk operasi epoll_ctl. Jika operasi memerlukan event data (seperti EPOLL_CTL_ADD/MOD),
+ * data tersebut akan disalin dari user space ke kernel space.
+ *
+ * Return: 0 jika sukses, -EINVAL jika parameter tidak valid, atau -EFAULT jika gagal
+ *         menyalin data dari user space.
+ */
 int io_epoll_ctl_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_epoll *epoll = io_kiocb_to_cmd(req, struct io_epoll);
@@ -68,6 +76,13 @@ int io_epoll_ctl(struct io_kiocb *req, unsigned int issue_flags)
 	return IOU_OK;
 }
 
+/*
+ * Fungsi ini memvalidasi parameter dan mempersiapkan struktur untuk operasi
+ * epoll_wait. Parameter yang diperlukan termasuk file descriptor epoll,
+ * jumlah maksimum event, dan pointer ke buffer events di user space.
+ *
+ * Return: 0 jika sukses, -EINVAL jika parameter tidak valid.
+ */
 int io_epoll_wait_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_epoll_wait *iew = io_kiocb_to_cmd(req, struct io_epoll_wait);
@@ -80,6 +95,14 @@ int io_epoll_wait_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return 0;
 }
 
+/*
+ * Fungsi ini menjalankan operasi epoll_wait sebenarnya dan mengirimkan event
+ * yang tersedia ke user space. Jika tidak ada event yang tersedia dan operasi
+ * bersifat non-blocking, fungsi akan mengembalikan -EAGAIN.
+ *
+ * Return: IOU_OK jika sukses, -EAGAIN jika tidak ada event yang tersedia,
+ *         atau nilai error lainnya jika terjadi kegagalan.
+ */
 int io_epoll_wait(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_epoll_wait *iew = io_kiocb_to_cmd(req, struct io_epoll_wait);

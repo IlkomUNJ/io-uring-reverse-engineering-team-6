@@ -28,6 +28,13 @@ struct io_madvise {
 	u32				advice;
 };
 
+/*
+ * Fungsi ini membaca parameter dari SQE untuk operasi madvise dan memvalidasinya.
+ * Hanya berfungsi jika CONFIG_ADVISE_SYSCALLS dan CONFIG_MMU diaktifkan.
+ *
+ * Return: 0 jika sukses, -EINVAL jika parameter tidak valid, atau -EOPNOTSUPP
+ *         jika fitur tidak didukung.
+ */
 int io_madvise_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 #if defined(CONFIG_ADVISE_SYSCALLS) && defined(CONFIG_MMU)
@@ -48,6 +55,12 @@ int io_madvise_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 #endif
 }
 
+/*
+ * Fungsi ini menjalankan operasi madvise sebenarnya untuk memengaruhi manajemen
+ * memori virtual. Selalu dijalankan secara synchronous.
+ *
+ * Return: IOU_OK jika sukses, atau -EOPNOTSUPP jika fitur tidak didukung.
+ */
 int io_madvise(struct io_kiocb *req, unsigned int issue_flags)
 {
 #if defined(CONFIG_ADVISE_SYSCALLS) && defined(CONFIG_MMU)
@@ -64,6 +77,12 @@ int io_madvise(struct io_kiocb *req, unsigned int issue_flags)
 #endif
 }
 
+/*
+ * Fungsi helper yang menentukan apakah operasi fadvise tertentu harus dijalankan
+ * secara asynchronous berdasarkan jenis advice yang diberikan.
+ *
+ * Return: true jika harus async, false jika bisa synchronous.
+ */
 static bool io_fadvise_force_async(struct io_fadvise *fa)
 {
 	switch (fa->advice) {
@@ -76,6 +95,12 @@ static bool io_fadvise_force_async(struct io_fadvise *fa)
 	}
 }
 
+/*
+ * Fungsi ini membaca parameter dari SQE untuk operasi fadvise dan memvalidasinya.
+ * Juga menentukan apakah operasi harus dijalankan secara asynchronous.
+ *
+ * Return: 0 jika sukses, -EINVAL jika parameter tidak valid.
+ */
 int io_fadvise_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_fadvise *fa = io_kiocb_to_cmd(req, struct io_fadvise);
@@ -93,6 +118,13 @@ int io_fadvise_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return 0;
 }
 
+/*
+ * Fungsi ini menjalankan operasi fadvise sebenarnya untuk memberikan saran
+ * tentang pola akses file. Beberapa operasi bisa synchronous atau asynchronous
+ * tergantung pada jenis advice.
+ *
+ * Return: IOU_OK jika sukses, nilai error jika gagal.
+ */
 int io_fadvise(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_fadvise *fa = io_kiocb_to_cmd(req, struct io_fadvise);
