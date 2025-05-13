@@ -179,16 +179,25 @@
  };
  #endif
  
+// Mengembalikan jumlah event (hasil operasi) yang tersedia di CQ ring (completion queue)
+// berdasarkan tail yang sudah di-cache (cached_cq_tail) dan head dari pengguna.
+// Nilai ini menunjukkan seberapa banyak entri yang siap dibaca oleh pengguna.
  static inline unsigned int __io_cqring_events(struct io_ring_ctx *ctx)
  {
 	 return ctx->cached_cq_tail - READ_ONCE(ctx->rings->cq.head);
  }
  
+// Mengembalikan jumlah event yang tersedia di CQ ring (completion queue) berdasarkan
+// nilai tail dan head yang terlihat oleh pengguna secara langsung (user-space).
+// Digunakan untuk mengecek antrian selesai dari sisi pengguna.
  static inline unsigned int __io_cqring_events_user(struct io_ring_ctx *ctx)
  {
 	 return READ_ONCE(ctx->rings->cq.tail) - READ_ONCE(ctx->rings->cq.head);
  }
  
+// Mengecek apakah ada request yang terhubung (linked) dengan request utama (`head`)
+// yang masih dalam keadaan aktif (in-flight). Jika ada yang masih berjalan, fungsi
+// mengembalikan true. Digunakan untuk sinkronisasi atau kontrol eksekusi request terhubung.
  static bool io_match_linked(struct io_kiocb *head)
  {
 	 struct io_kiocb *req;
@@ -227,12 +236,16 @@
 	 return matched;
  }
  
+// Menandai request `req` sebagai gagal dan mengatur hasilnya (result) dengan nilai `res`.
+// Biasanya digunakan saat request dalam sebuah chain/link gagal diproses.
  static inline void req_fail_link_node(struct io_kiocb *req, int res)
  {
 	 req_set_fail(req);
 	 io_req_set_res(req, res, 0);
  }
  
+// Menambahkan request `req` ke cache (daftar bebas/free list) pada context `ctx`.
+// Tujuannya untuk mendaur ulang request agar efisien dan menghindari alokasi ulang.
  static inline void io_req_add_to_cache(struct io_kiocb *req, struct io_ring_ctx *ctx)
  {
 	 wq_stack_add_head(&req->comp_list, &ctx->submit_state.free_list);
@@ -252,6 +265,9 @@
 	 complete(&ctx->ref_comp);
  }
  
+// menjalankan request yang tidak bisa langsung dijalankan.
+// Diambil dari daftar `fallback_llist`, lalu diproses menggunakan `io_task_work.func()`.
+// Digunakan dalam konteks workqueue ketika eksekusi langsung tidak memungkinkan.
  static __cold void io_fallback_req_func(struct work_struct *work)
  {
 	 struct io_ring_ctx *ctx = container_of(work, struct io_ring_ctx,
@@ -269,6 +285,9 @@
 	 percpu_ref_put(&ctx->refs);
  }
  
+// Mengalokasikan dan menginisialisasi tabel hash `table` dengan jumlah bucket sebesar 2^bits.
+// Jika alokasi gagal, akan mencoba dengan `bits` yang lebih kecil hingga minimum (1).
+// Mengembalikan 0 jika sukses, atau -ENOMEM jika alokasi tidak berhasil sama sekali.
  static int io_alloc_hash_table(struct io_hash_table *table, unsigned bits)
  {
 	 unsigned int hash_buckets;
@@ -291,6 +310,10 @@
 	 return 0;
  }
  
+// Membebaskan semua cache alokasi internal milik context `ctx`.
+// Termasuk cache untuk operasi poll, network message, read/write, command,
+// message, futex, dan resource lain yang digunakan oleh io_uring.
+// Masing-masing cache memiliki fungsi pembersih (free) yang sesuai.
  static void io_free_alloc_caches(struct io_ring_ctx *ctx)
  {
 	 io_alloc_cache_free(&ctx->apoll_cache, kfree);
@@ -387,6 +410,9 @@
 	 return NULL;
  }
  
+// Mencatat terjadinya overflow (kelebihan kapasitas) pada Completion Queue (CQ).
+// Menambah nilai `cq_overflow` dan mengurangi `cq_extra` untuk menandai adanya event
+// yang tidak muat ditulis ke ring dan perlu diproses nanti.
  static void io_account_cq_overflow(struct io_ring_ctx *ctx)
  {
 	 struct io_rings *r = ctx->rings;
@@ -395,6 +421,10 @@
 	 ctx->cq_extra--;
  }
  
+// Menentukan apakah request `req` perlu ditunda (defer) eksekusinya.
+// Jika request bersifat `IO_DRAIN`, maka hanya bisa dieksekusi ketika
+// semua request sebelumnya telah selesai (drain semantics).
+// Fungsi ini mengecek apakah sequence saat ini sudah sesuai untuk lanjut.
  static bool req_need_defer(struct io_kiocb *req, u32 seq)
  {
 	 if (unlikely(req->flags & REQ_F_IO_DRAIN)) {
@@ -406,6 +436,10 @@
 	 return false;
  }
  
+// Membersihkan semua data dan sumber daya yang terkait dengan request `req`.
+// Termasuk buffer terpilih, callback cleanup khusus per operasi, polling,
+// kredensial, dan data async yang dialokasikan.
+// Menjamin tidak ada resource bocor setelah request selesai.
  static void io_clean_op(struct io_kiocb *req)
  {
 	 if (unlikely(req->flags & REQ_F_BUFFER_SELECTED))
@@ -433,6 +467,8 @@
 	 req->flags &= ~IO_REQ_CLEAN_FLAGS;
  }
  
+// Melacak bahwa request `req` sedang dalam status aktif (in-flight).
+// Menandai flag `REQ_F_INFLIGHT` dan menambah hitungan request aktif di thread context.
  static inline void io_req_track_inflight(struct io_kiocb *req)
  {
 	 if (!(req->flags & REQ_F_INFLIGHT)) {
@@ -462,17 +498,22 @@
 	 return __io_prep_linked_timeout(req);
  }
  
+// Menyiapkan dan menjadwalkan timeout untuk request ter-link (`linked timeout`).
+// Fungsi ini dipanggil hanya jika flag REQ_F_ARM_LTIMEOUT disetel.
  static noinline void __io_arm_ltimeout(struct io_kiocb *req)
  {
 	 io_queue_linked_timeout(__io_prep_linked_timeout(req));
  }
  
+// Mengecek apakah request memiliki flag REQ_F_ARM_LTIMEOUT,
+// lalu memanggil fungsi untuk menyiapkan timeout jika perlu.
  static inline void io_arm_ltimeout(struct io_kiocb *req)
  {
 	 if (unlikely(req->flags & REQ_F_ARM_LTIMEOUT))
 		 __io_arm_ltimeout(req);
  }
  
+// Menyiapkan work async (`io_wq_work`) untuk request `req`.
  static void io_prep_async_work(struct io_kiocb *req)
  {
 	 const struct io_issue_def *def = &io_issue_defs[req->opcode];
@@ -506,6 +547,9 @@
 	 }
  }
  
+// Menyiapkan work async (`io_wq_work`) untuk semua request yang terhubung (`linked`).
+// Jika request memiliki timeout terhubung (REQ_F_LINK_TIMEOUT), penguncian dilakukan
+// untuk melindungi struktur timeout selama inisialisasi.
  static void io_prep_async_link(struct io_kiocb *req)
  {
 	 struct io_kiocb *cur;
@@ -554,17 +598,24 @@
 		 io_queue_linked_timeout(link);
  }
  
+// Menjadwalkan request `req` untuk dikerjakan oleh worker thread (iowq)
+// melalui fungsi penjadwalan berbasis task_work.
  static void io_req_queue_iowq_tw(struct io_kiocb *req, io_tw_token_t tw)
  {
 	 io_queue_iowq(req);
  }
- 
+
+// Mendaftarkan request `req` untuk diproses oleh iowq (I/O worker queue),
+// dengan men-set fungsi task_work dan menambahkannya ke antrian task_work.
  void io_req_queue_iowq(struct io_kiocb *req)
  {
 	 req->io_task_work.func = io_req_queue_iowq_tw;
 	 io_req_task_work_add(req);
  }
- 
+
+// Memproses antrian `defer_list` dalam konteks `ctx`,
+// yaitu request yang ditunda eksekusinya sampai kondisi tertentu terpenuhi.
+// Jika kondisi terpenuhi (tidak perlu ditunda), request diproses segera.
  static __cold noinline void io_queue_deferred(struct io_ring_ctx *ctx)
  {
 	 spin_lock(&ctx->completion_lock);
@@ -580,7 +631,9 @@
 	 }
 	 spin_unlock(&ctx->completion_lock);
  }
- 
+
+// Melakukan flushing terhadap komponen-komponen tambahan yang mungkin aktif:
+// polling, timeout, request yang tertunda, dan sinyal eventfd.
  void __io_commit_cqring_flush(struct io_ring_ctx *ctx)
  {
 	 if (ctx->poll_activated)
@@ -592,19 +645,23 @@
 	 if (ctx->has_evfd)
 		 io_eventfd_flush_signal(ctx);
  }
- 
+
+// Mengunci completion queue jika tidak menggunakan mode CQ tanpa lock.
  static inline void __io_cq_lock(struct io_ring_ctx *ctx)
  {
 	 if (!ctx->lockless_cq)
 		 spin_lock(&ctx->completion_lock);
  }
  
+// Mengunci completion queue (selalu menggunakan spinlock).
  static inline void io_cq_lock(struct io_ring_ctx *ctx)
 	 __acquires(ctx->completion_lock)
  {
 	 spin_lock(&ctx->completion_lock);
  }
- 
+
+// Melepas lock completion queue jika perlu dan membangunkan waiters
+// bila task belum selesai. Juga melakukan commit dan flushing CQ.
  static inline void __io_cq_unlock_post(struct io_ring_ctx *ctx)
  {
 	 io_commit_cqring(ctx);
@@ -618,6 +675,8 @@
 	 io_commit_cqring_flush(ctx);
  }
  
+// Sama seperti __io_cq_unlock_post, tetapi selalu melepas spinlock secara eksplisit
+// dan selalu membangunkan waiters setelah commit.
  static void io_cq_unlock_post(struct io_ring_ctx *ctx)
 	 __releases(ctx->completion_lock)
  {
@@ -679,12 +738,17 @@
 	 io_cq_unlock_post(ctx);
  }
  
+// Melakukan flush paksa terhadap entri completion yang overflow,
+// biasanya ketika context `ctx` akan dihentikan atau dimatikan.
+// Argumen `true` digunakan untuk mengindikasikan penghapusan agresif.
  static void io_cqring_overflow_kill(struct io_ring_ctx *ctx)
  {
 	 if (ctx->rings)
 		 __io_cqring_overflow_flush(ctx, true);
  }
  
+// Melakukan flush terhadap entri completion yang overflow secara normal
+// dengan mengunci `uring_lock` untuk memastikan sinkronisasi.
  static void io_cqring_do_overflow_flush(struct io_ring_ctx *ctx)
  {
 	 mutex_lock(&ctx->uring_lock);
@@ -707,6 +771,8 @@
 	 }
  }
  
+// Mengisi ulang (refill) cache referensi `tctx->cached_refs` untuk task saat ini.
+// Menambahkan sejumlah referensi ke counter inflight dan ke task `current`.
  void io_task_refs_refill(struct io_uring_task *tctx)
  {
 	 unsigned int refill = -tctx->cached_refs + IO_TCTX_REFS_CACHE_NR;
@@ -716,6 +782,8 @@
 	 tctx->cached_refs += refill;
  }
  
+// Mengurangi seluruh referensi cached milik task `task` ketika task tidak lagi digunakan oleh io_uring.
+// Menyesuaikan counter inflight dan melepas task references secara kolektif.
  static __cold void io_uring_drop_tctx_refs(struct task_struct *task)
  {
 	 struct io_uring_task *tctx = task->io_uring;
@@ -924,6 +992,9 @@
 	 req_ref_put(req);
  }
  
+// Menangani kegagalan request yang sebelumnya ditunda (deferred).
+// Menandai request sebagai gagal, mengatur hasilnya, memanggil handler gagal khusus
+// jika ada, lalu menyelesaikan request yang ditunda.
  void io_req_defer_failed(struct io_kiocb *req, s32 res)
 	 __must_hold(&ctx->uring_lock)
  {
@@ -1077,6 +1148,10 @@
 	 return node;
  }
  
+// Fungsi utama untuk memproses dan menangani fallback task.
+// Menelusuri node dalam linked list, dan jika diperlukan, 
+// menambahkan request ke fallback list untuk diproses.
+// Fungsi ini juga menangani sinkronisasi antar `ctx` (context) dan memastikan bahwa setiap context diproses secara benar.
  static __cold void __io_fallback_tw(struct llist_node *node, bool sync)
  {
 	 struct io_ring_ctx *last_ctx = NULL;
@@ -1104,6 +1179,8 @@
 	 }
  }
  
+// Fungsi pembungkus yang menangani fallback task untuk task-structure `tctx`
+// Mengambil dan memproses task dari daftar `task_list`, kemudian meneruskan ke __io_fallback_tw
  static void io_fallback_tw(struct io_uring_task *tctx, bool sync)
  {
 	 struct llist_node *node = llist_del_all(&tctx->task_list);
@@ -1242,6 +1319,8 @@
 	 io_fallback_tw(tctx, false);
  }
  
+// Menambahkan work terkait task ke daftar work lokal atau normal, tergantung pada flag setup context.
+// Jika flag `IORING_SETUP_DEFER_TASKRUN` ada, work akan ditambahkan ke daftar work lokal, jika tidak, ke daftar normal.
  void __io_req_task_work_add(struct io_kiocb *req, unsigned flags)
  {
 	 if (req->ctx->flags & IORING_SETUP_DEFER_TASKRUN)
@@ -1250,6 +1329,8 @@
 		 io_req_normal_work_add(req);
  }
  
+// Fungsi ini menambahkan work task ke daftar work remote hanya jika `IORING_SETUP_DEFER_TASKRUN` aktif.
+// Jika flag tidak aktif, fungsi akan memperingatkan dan tidak melakukan apapun.
  void io_req_task_work_add_remote(struct io_kiocb *req, unsigned flags)
  {
 	 if (WARN_ON_ONCE(!(req->ctx->flags & IORING_SETUP_DEFER_TASKRUN)))
@@ -1257,6 +1338,8 @@
 	 __io_req_task_work_add(req, flags);
  }
  
+// menggerakkan work task dari daftar work lokal dan daftar work retry untuk diproses.
+// Menggunakan fungsi fallback untuk memproses work yang ditunda dari daftar yang ada.
  static void __cold io_move_task_work_from_local(struct io_ring_ctx *ctx)
  {
 	 struct llist_node *node = llist_del_all(&ctx->work_llist);
@@ -1266,6 +1349,9 @@
 	 __io_fallback_tw(node, false);
  }
  
+// memeriksa apakah ada work lokal yang belum diproses.
+// Jika ada work lokal yang tertunda dan jumlah events lebih kecil dari `min_events`, work tersebut akan tetap diproses.
+// Jika ada flag `IORING_SETUP_TASKRUN_FLAG`, maka flag `IORING_SQ_TASKRUN` akan disetel.
  static bool io_run_local_work_continue(struct io_ring_ctx *ctx, int events,
 						int min_events)
  {
@@ -1278,6 +1364,9 @@
 	 return false;
  }
  
+// menjalankan loop untuk memproses work lokal yang ada dalam daftar `node`.
+// work ini diproses dengan memanggil fungsi yang sesuai untuk setiap task work (polling atau penyelesaian operasi I/O).
+// Fungsi ini akan memproses sampai batas jumlah `events` yang ditentukan.
  static int __io_run_local_work_loop(struct llist_node **node,
 					 io_tw_token_t tw,
 					 int events)
@@ -1336,6 +1425,8 @@
 	 return ret;
  }
  
+// menjalankan work lokal yang tertunda di dalam konteks `ctx`
+// mengunci mutex `uring_lock` dan kemudian menjalankan work lokal.
  static inline int io_run_local_work_locked(struct io_ring_ctx *ctx,
 						int min_events)
  {
@@ -1347,6 +1438,8 @@
 					 max(IO_LOCAL_TW_DEFAULT_MAX, min_events));
  }
  
+// menjalankan work lokal yang tertunda di dalam konteks `ctx`
+// Mutex diambil untuk mencegah akses bersamaan selama eksekusi.
  static int io_run_local_work(struct io_ring_ctx *ctx, int min_events,
 				  int max_events)
  {
@@ -1359,12 +1452,15 @@
 	 return ret;
  }
  
+// membatalkan work yang tertunda untuk request `req` dan menandainya sebagai gagal.
  static void io_req_task_cancel(struct io_kiocb *req, io_tw_token_t tw)
  {
 	 io_tw_lock(req->ctx, tw);
 	 io_req_defer_failed(req, req->cqe.res);
  }
  
+// mengatur dan mengirimkan tugas (task) terkait dengan request I/O (req). 
+// Fungsi ini beroperasi berdasarkan beberapa kondisi dan aturan yang ditentukan.
  void io_req_task_submit(struct io_kiocb *req, io_tw_token_t tw)
  {
 	 io_tw_lock(req->ctx, tw);
@@ -1376,13 +1472,16 @@
 		 io_queue_sqe(req);
  }
  
+//  menandai request I/O yang gagal dan menambahkan pekerjaan pembatalan ke dalam queue.
  void io_req_task_queue_fail(struct io_kiocb *req, int ret)
  {
 	 io_req_set_res(req, ret, 0);
 	 req->io_task_work.func = io_req_task_cancel;
 	 io_req_task_work_add(req);
  }
- 
+
+// menambahkan request I/O ke dalam antrian untuk diproses. 
+// menetapkan fungsi yang akan dieksekusi pada request I/O.
  void io_req_task_queue(struct io_kiocb *req)
  {
 	 req->io_task_work.func = io_req_task_submit;
@@ -1652,6 +1751,8 @@
 	 }
  }
  
+// mengembalikan flag yang terkait dengan file yang diberikan (file). 
+// Flag ini digunakan untuk menentukan perilaku tertentu dari operasi I/O pada file tersebut.
  io_req_flags_t io_file_get_flags(struct file *file)
  {
 	 io_req_flags_t res = 0;
@@ -1665,6 +1766,7 @@
 	 return res;
  }
  
+// mendapatkan urutan (sequence) dari permintaan I/O (I/O request) dalam konteks antrian.
  static u32 io_get_sequence(struct io_kiocb *req)
  {
 	 u32 seq = req->ctx->cached_sq_head;
@@ -1717,6 +1819,8 @@
 	 spin_unlock(&ctx->completion_lock);
  }
  
+// menetapkan file yang terkait dengan request I/O,
+// tergantung pada apakah file dibutuhkan oleh operasi atau tidak.
  static bool io_assign_file(struct io_kiocb *req, const struct io_issue_def *def,
 				unsigned int issue_flags)
  {
@@ -1731,6 +1835,8 @@
 	 return !!req->file;
  }
  
+// menangani pengiriman SQE (Submission Queue Entry) untuk request I/O,
+// termasuk pengelolaan kredensial dan audit.
  static inline int __io_issue_sqe(struct io_kiocb *req,
 				  unsigned int issue_flags,
 				  const struct io_issue_def *def)
@@ -1755,6 +1861,8 @@
 	 return ret;
  }
  
+// menangani pengiriman submission queue entry (SQE) untuk request I/O.
+// Ini bertanggung jawab untuk mengelola status request I/O dan penanganan penyelesaian request tersebut.
  static int io_issue_sqe(struct io_kiocb *req, unsigned int issue_flags)
  {
 	 const struct io_issue_def *def = &io_issue_defs[req->opcode];
@@ -1785,6 +1893,7 @@
 	 return ret;
  }
  
+// menangani pengiriman request polling untuk I/O dalam konteks task tertentu.
  int io_poll_issue(struct io_kiocb *req, io_tw_token_t tw)
  {
 	 const unsigned int issue_flags = IO_URING_F_NONBLOCK |
@@ -1975,7 +2084,7 @@
  }
  
  /*
-  * Menyerahkan permintaan ke sistem secara langsung atau async tergantung
+  * Menyerahkan request ke sistem secara langsung atau async tergantung
   * pada flags dan kemampuan file. Menangani kasus blocking/non-blocking.
   *
   * Harus memegang ctx->uring_lock
@@ -2197,7 +2306,7 @@
  }
  
  /*
-  * Memvalidasi SQE, menginisialisasi permintaan, dan menyerahkannya 
+  * Memvalidasi SQE, menginisialisasi request, dan menyerahkannya 
   * ke sistem sesuai jenis operasinya. Juga menangani linked requests.
   */
  static inline int io_submit_sqe(struct io_ring_ctx *ctx, struct io_kiocb *req,
@@ -2397,6 +2506,10 @@
 	 return -1;
  }
  
+// mencoba menjalankan pekerjaan lokal atau pekerjaan terkait task I/O dalam
+// konteks yang diberikan (ctx). Jika ada pekerjaan lokal yang tertunda, ia akan menjalankan
+// pekerjaan lokal tersebut. Jika tidak, ia mencoba menjalankan pekerjaan terkait task I/O.
+// Fungsi ini juga memeriksa apakah ada signal yang pending untuk task saat ini.
  int io_run_task_work_sig(struct io_ring_ctx *ctx)
  {
 	 if (io_local_work_pending(ctx)) {
@@ -2411,6 +2524,7 @@
 	 return 0;
  }
  
+// memeriksa apakah task saat ini memiliki operasi I/O yang tertunda.
  static bool current_pending_io(void)
  {
 	 struct io_uring_task *tctx = current->io_uring;
@@ -2420,6 +2534,8 @@
 	 return percpu_counter_read_positive(&tctx->inflight);
  }
  
+// menangani wakeup pada timer completion queue ring (CQ ring).
+// Ketika timer selesai, proses ini akan dibangunkan dan melanjutkan operasi berikutnya.
  static enum hrtimer_restart io_cqring_timer_wakeup(struct hrtimer *timer)
  {
 	 struct io_wait_queue *iowq = container_of(timer, struct io_wait_queue, t);
@@ -2474,6 +2590,10 @@
 	 return io_cqring_timer_wakeup(timer);
  }
  
+// menjadwalkan timeout pada wait queue untuk
+// completion queue ring (CQ ring). Fungsi ini menghitung waktu timeout dan
+// mengatur timer untuk bangun pada waktu tertentu, tergantung pada apakah
+// ada timeout minimum yang ditentukan atau tidak.
  static int io_cqring_schedule_timeout(struct io_wait_queue *iowq,
 					   clockid_t clock_id, ktime_t start_time)
  {
@@ -2682,6 +2802,9 @@
 	 return READ_ONCE(rings->cq.head) == READ_ONCE(rings->cq.tail) ? ret : 0;
  }
  
+// membebaskan sumber daya yang terkait dengan ring I/O
+// pada objek io_ring_ctx. Ini termasuk membebaskan region yang digunakan oleh
+// submission queue (sq_region) dan ring region itu sendiri.
  static void io_rings_free(struct io_ring_ctx *ctx)
  {
 	 io_free_region(ctx, &ctx->sq_region);
@@ -2689,7 +2812,10 @@
 	 ctx->rings = NULL;
 	 ctx->sq_sqes = NULL;
  }
- 
+
+// menghitung ukuran dari struktur ring yang dibutuhkan,
+// berdasarkan parameter flags, jumlah entry di submission queue (sq_entries),
+// dan jumlah entry di completion queue (cq_entries).
  unsigned long rings_size(unsigned int flags, unsigned int sq_entries,
 			  unsigned int cq_entries, size_t *sq_offset)
  {
@@ -2727,6 +2853,9 @@
 	 return off;
  }
  
+// membebaskan cache yang digunakan untuk request
+// dalam objek io_ring_ctx. Ini akan menghapus request yang ada dalam cache
+// dan mengurangi referensi yang terkait dengan ctx.
  static void io_req_caches_free(struct io_ring_ctx *ctx)
  {
 	 struct io_kiocb *req;
@@ -2744,6 +2873,9 @@
 	 mutex_unlock(&ctx->uring_lock);
  }
  
+// membebaskan (free) semua sumber daya yang digunakan oleh
+// konteks io_ring (ctx). Ini termasuk mengakhiri thread SQ, membebaskan memori terkait,
+// dan membersihkan berbagai struktur yang ada pada ctx.
  static __cold void io_ring_ctx_free(struct io_ring_ctx *ctx)
  {
 	 io_sq_thread_finish(ctx);
@@ -2883,6 +3015,8 @@
 	 complete(&work->completion);
  }
  
+// Fungsi ini digunakan untuk membatalkan pekerjaan dalam konteks `work` jika konteks request `req`
+// sama dengan data yang diberikan. Fungsi ini akan mengembalikan nilai `true` jika konteksnya sesuai.
  static __cold bool io_cancel_ctx_cb(struct io_wq_work *work, void *data)
  {
 	 struct io_kiocb *req = container_of(work, struct io_kiocb, work);
@@ -3363,7 +3497,7 @@
  }
  
  /*
-  * Mengirim permintaan I/O dan menunggu penyelesaian.
+  * Mengirim request I/O dan menunggu penyelesaian.
   * Dapat beroperasi dalam mode blocking/non-blocking tergantung flags.
   *
   * Return: Jumlah operasi yang berhasil diproses, atau error negatif
@@ -3913,7 +4047,7 @@
  }
  
  /*
-  * Setup kmem_cache untuk struktur permintaan
+  * Setup kmem_cache untuk struktur request
   * Membuat workqueue khusus
   * Inisialisasi tabel operasi
   * Setup sysctl
