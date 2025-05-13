@@ -21,7 +21,7 @@ alloc_cache.c | alloc_cache.c | io_alloc_cache_free | 1
 | | lib/inflate.c | free | 1
 | | mm/slub.c | kvfree | 1
 | | alloc_cache.c | io_alloc_cache_init | 1
-| | WHERE YOU AT DAAWGGG GADAM | kvmalloc_array | 1
+| | include/linux/slab.h | kvmalloc_array | 1
 | | alloc_cache.c | io_cache_alloc_new | 1
 | | tools/lib/slab.c | kmalloc | 1
 | | lib/string.c | memset | 1
@@ -132,108 +132,327 @@ eventfd.h | eventfd.c | io_eventfd_register | 1
 | | eventfd.c | io_eventfd_unregister | 1
 | | eventfd.c | io_eventfd_flush_signal | 1
 | | eventfd.c | io_eventfd_signal | 1
-fdinfo.c | finfo.c | io_uring_show_cred | 
-| | | seq_user_ns | 
-| | | seq_printf | 
-| | | seq_put_decimal_ull | 
-| | | from_kuid_munged | 
-| | | from_kgid_munged | 
-| | | seq_puts | 
-| | | seq_put_hex_ll | 
-| | | seq_putc | 
-| | | common_tracking_show_fdinfo |
-| | | napi_show_fdinfo | 
-| | | io_uring_show_fdinfo | 
-| | | io_uring_get_opcode | 
-| | | mutex_trylock | 
-| | | getrusage | 
-| | | io_slot_file | 
-| | | seq_file_path | 
-| | | xa_empty | 
-| | | xa_for_each | 
-| | | task_work_pending | 
-| | | mutex_unlock | 
-| | | spin_lock | 
-| | | spin_unlock | 
+fdinfo.c | finfo.c | io_uring_show_cred | 2
+| | include/linux/seq_file.h | seq_user_ns | 1
+| | fs/seq_file.c | seq_printf | 32
+| | fs/seq_file.c | seq_put_decimal_ull | 9
+| | kernel/user_namespace.c | from_kuid_munged | 4
+| | kernel/user_namespace.c | from_kgid_munged | 5
+| | fs/seq_file.c | seq_puts | 9
+| | fs/seq_file.c | seq_put_hex_ll | 1
+| | fs/seq_file.c | seq_putc | 1
+| | fdinfo.c | common_tracking_show_fdinfo | 3
+| | fdinfo.c | napi_show_fdinfo | 3
+| | fdinfo.c | io_uring_show_fdinfo | 1
+| | opdef.c | io_uring_get_opcode | 1
+| | tools/perf/util/mutex.c | mutex_trylock | 1
+| | kernel/sys.c | getrusage | 1
+| | filetable.h | io_slot_file | 1
+| | fs/seq_file.c | seq_file_path | 1
+| | include/linux/xarray.h | xa_empty | 1
+| | include/linux/xarray.h | xa_for_each | 1
+| | include/linux/task_work.h | task_work_pending | 1
+| | kernel/locking/mutex.c | mutex_unlock | 1
+| | include/linux/spinlock.h | spin_lock | 1
+| | include/linux/spinlock.h | spin_unlock | 1
 fdinfo.h | fdinfo.c | io_uring_show_fdinfo | 1 
 filetable.c | filetable.c | io_file_bitmap_get | 2
-| | | find_next_zero_bit | 
-| | | io_alloc_file_tables |
-| | | io_rsrc_data_alloc | 
-| | | bitmap_zalloc | 
-| | | io_rsrc_data_free | 
-| | | io_free_file_tables | 
-| | | bitmap_free | 
-| | | io_install_fixed_file | 
-| | | __must_hold | 
-| | | io_is_uring_fops | 
-| | | io_rsrc_node_alloc | 
-| | | io_reset_rsrc_node | 
-| | | io_file_bitmap_set | 
-| | | io_fixed_file_set | 
-| | | __io_fixed_fd_install | 
-| | | io_fixed_fd_install | 
-| | | io_ring_submit_lock | 
-| | | io_ring_submit_unlock | 
-| | | fput | 
-| | | io_fixed_fd_remove | 
-| | | io_rsrc_node_lookup | 
-| | | io_file_bitmap_clear | 
-| | | io_register_file_alloc_range | 
-| | | copy_from_user | 
-| | | check_add_overflow | 
-| | | io_file_table_set_alloc_range | 
+| | include/linux/find.h | find_next_zero_bit | 1
+| | io_uring/filetable.c | io_alloc_file_tables |1
+| | io_uring/rsrc.c | io_rsrc_data_alloc | 1
+| | lib/bitmap.c | bitmap_zalloc | 1
+| | io_uring/rsrc.c | io_rsrc_data_free | 2
+| | filetable.c | io_free_file_tables | 1
+| | lib/bitmap.c | bitmap_free | 1
+| | filetable.c | io_install_fixed_file | 2
+| | drivers/block/aoe/aoenet.c | __must_hold | 1
+| | io_uring.c | io_is_uring_fops | 1
+| | rsrc.c | io_rsrc_node_alloc | 1
+| | rsrc.h | io_reset_rsrc_node | 2
+| | filetable.h | io_file_bitmap_set | 1
+| | filetable.h | io_fixed_file_set | 1
+| | filetable.c | __io_fixed_fd_install | 1
+| | filetable.c | io_fixed_fd_install | 1
+| | io_uring.h | io_ring_submit_lock | 1
+| | io_uring.h | io_ring_submit_unlock | 1
+| | tools/testing/vma/vma_internal.h | fput | 1
+| | filetable.c | io_fixed_fd_remove | 1
+| | rsrc.h | io_rsrc_node_lookup | 1
+| | filetable.h | io_file_bitmap_clear | 1
+| | filetable.c | io_register_file_alloc_range | 1
+| | include/linux/uaccess.h | copy_from_user | 1
+| | tools/include/linux/overflow.h | check_add_overflow | 1
+| | filetable.h | io_file_table_set_alloc_range | 1
 filetable.h | filetable.c | io_alloc_file_tables | 1
-| | | io_free_file_tables |
-| | | io_fixed_fd_install | 
-| | | __io_fixed_fd_install | 
-| | | io_fixed_fd_remove | 
-| | | io_register_file_alloc_range | 
-| | | io_file_get_flags | 2  
-| | | io_file_bitmap_clear | 
-| | | io_file_bitmap_set | 
-| | | io_slot_flags | 
-| | | io_slot_file | 
-| | | io_fixed_file_set | 
-| | | io_file_table_set_alloc_range | 
-fs.c | fs.c | io_renameat_prep | 
-| | | getname | 
-| | | putname | 
-| | | io_renameat |
-| | | do_renameat2 | 
-| | | io_req_set_res | 
-| | | io_renameat_cleanup | 
-| | | io_unlinkat_prep | 
-| | | io_unlinkat | 
-| | | do_rmdir | 
-| | | do_unlinkat | 
-| | | io_unlinkat_cleanup | 
-| | | io_mkdirat_prep | 
-| | | io_mkdirat | 
-| | | do_mkdirat | 
-| | | io_mkdirat_cleanup | 
-| | | io_symlinkat_prep | 
-| | | io_symlinkat | 
-| | | io_linkat_prep | 
-| | | getname_uflags | 
-| | | io_linkat | 
-| | | do_linkat | 
-| | | io_link_cleanup | 
+| | filetable.c | io_free_file_tables | 1
+| | filetable.c | io_fixed_fd_install | 1
+| | filetable.c | __io_fixed_fd_install | 1
+| | filetable.c | io_fixed_fd_remove | 1
+| | filetable.h | io_register_file_alloc_range | 1
+| | io_uring.c | io_file_get_flags | 2  
+| | filetable.h | io_file_bitmap_clear | 1
+| | filetable.h | io_file_bitmap_set | 1
+| | filetable.h | io_slot_flags | 1
+| | filetable.h | io_slot_file | 1
+| | filetable.h | io_fixed_file_set | 1
+| | filetable.h | io_file_table_set_alloc_range | 1
+fs.c | fs.c | io_renameat_prep | 1
+| | include/linux/fs.h | getname | 10
+| | fs/namei.c | putname | 13
+| | fs.c | io_renameat | 1
+| | namei.c | do_renameat2 | 1
+| | io_uring.h | io_req_set_res | 5
+| | fs.c | io_renameat_cleanup | 1
+| | fs.c | io_unlinkat_prep | 1
+| | fs.c | io_unlinkat | 1
+| | fs/internal.h | do_rmdir | 2
+| | fs/namei.c | do_unlinkat | 2
+| | fs.c | io_unlinkat_cleanup | 1
+| | fs.c | io_mkdirat_prep | 1
+| | fs.c | io_mkdirat | 1
+| | fs/namei.c | do_mkdirat | 1
+| | fs.c | io_mkdirat_cleanup | 1
+| | fs.c | io_symlinkat_prep | 2
+| | fs.c | io_symlinkat | 1
+| | fs.c | io_linkat_prep | 1
+| | fs/namei.c | getname_uflags | 1
+| | fs.c | io_linkat | 1
+| | fs/namei.c | do_linkat | 1
+| | fs.c | io_link_cleanup | 1
 fs.h | fs.c | io_renameat_prep | 1
-| | | io_renameat | 
-| | | io_renameat_cleanup | 
-| | | io_unlinkat_prep | 
-| | | io_unlinkat | 
-| | | io_unlinkat_cleanup | 
-| | | io_mkdirat_prep | 
-| | | io_mkdirat | 
-| | | io_mkdirat_cleanup | 
-| | | io_symlinkat_prep | 
-| | | io_symlinkat | 
-| | | io_linkat_prep | 
-| | | io_linkat | 
-| | | io_link_cleanup | 
-futex.c | futex.c | io_futex_cache_init | 
+| | fs.c | io_renameat | 1
+| | fs.c | io_renameat_cleanup | 1
+| | fs.c | io_unlinkat_prep | 1
+| | fs.c | io_unlinkat | 1
+| | fs.c | io_unlinkat_cleanup | 1
+| | fs.c | io_mkdirat_prep | 1
+| | fs.c | io_mkdirat | 1
+| | fs.c | io_mkdirat_cleanup | 1
+| | fs.c | io_symlinkat_prep | 1
+| | fs.c | io_symlinkat | 1
+| | fs.c | io_linkat_prep | 1
+| | fs.c | io_linkat | 1
+| | fs.c | io_link_cleanup | 1
+futex.c | futex.c | io_futex_cache_init | 1
+| | alloc_cache.c | io_alloc_cache_init | 2
+| | futex.c | io_futex_cache_free | 1
+| | alloc_cache.c | io_alloc_cache_free | 2
+| | futex.c | __io_futex_complete | 3
+| | tools/include/linux/list.h | hlist_del_init | 2
+| | io_uring.c | io_req_task_complete | 1
+| | futex.c | io_futex_complete | 3
+| | io_uring.h | io_tw_lock | 2
+| | alloc_cache.h | io_cache_free | 1
+| | futex.c | io_futexv_complete | 3
+| | kernel/futex/waitwake.c | futex_unqueue_multiple | 1
+| | io_uring.h | io_req_set_res | 8
+| | tools/lib/slab.c | kfree | 5
+| | futex.c | io_futexv_claim | 3
+| | arch/mips/include/asm/bitops.h | test_and_set_bit_lock | 1
+| | futex.c | __io_futex_cancel | 3
+| | kernel/futex/core.c | futex_unqueue | 1
+| | io_uring.h | io_req_task_work_add‎ | 3
+| | futex.c | io_futex_cancel | 1
+| | cancel.c | io_cancel_remove | 1
+| | futex.c | io_futex_remove_all | 1
+| | cancel.c | io_cancel_remove_all | 1
+| | futex.c | io_futex_prep | 1
+| | kernel/futex/futex.h | futex2_to_flags | 1
+| | kernel/futex/futex.h | futex_validate_input | 2
+| | futex.c | io_futex_wakev_fn | 2
+| | kernel/futex/waitwake.c | __futex_wake_mark | 2
+| | io_futexv_prep | io_futexv_prep | 1
+| | kernel/futex/syscalls.c | futex_parse_waitv | 1
+| | futex.c | io_futex_wake_fn | 2
+| | futex.c | io_futexv_wait | 1
+| | io_uring.h | io_ring_submit_lock | 2
+| | kernel/futex/waitwake.c | futex_wait_multiple_setup | 1
+| | io_uring.h | io_ring_submit_unlock | 4
+| | tools/include/linux/list.h | hlist_add_head | 2
+| | futex.c | io_futex_wait‎ | 1
+| | alloc_cache.h | io_cache_alloc | 1
+| | kernel/futex/waitwake.c | futex_wait_setup | 1
+| | kernel/futex/futex.h | futex_queue | 1
+| | futex.c | io_futex_wake | 1
+| | kernel/futex/waitwake.c | futex_wake | 1
+futex.h | futex.c | io_futex_prep | 1
+| | futex.c | io_futexv_prep | 1
+| | futex.c | io_futex_wait | 1
+| | futex.c | io_futexv_wait | 1
+| | futex.c | io_futex_wake | 1
+| | futex.c | io_futex_cancel | 2
+| | futex.c | io_futex_remove_all | 2
+| | futex.c | io_futex_cache_init | 2
+| | futex.c | io_futex_cache_free | 2
+io-wq.c | io-wq.c | create_io_worker | 4
+| | io-wq.c | io_wq_dec_running | 4
+| | io-wq.c | io_acct_cancel_pending_work | 5
+| | io-wq.c | create_worker_cb | 5
+| | io-wq.c | io_wq_cancel_tw_create | 4
+| | io-wq.c | io_worker_get | 4
+| | include/linux/refcount.h | refcount_inc_not_zero | 1
+| | io-wq.c | io_worker_release | 9
+| | include/linux/refcount.h | refcount_dec_and_test | 1
+| | io-wq.c | io_get_acct |   3
+| | io-wq.c | io_work_get_acct | 2
+| | io-wq.c | io_wq_get_acct | 8
+| | io-wq.c| io_worker_ref_put | 10
+| | include/linux/atomic/atomic-instrumented.h | atomic_dec_and_test | 2
+| | io-wq.c | io_wq_worker_stopped | 1
+| | io-wq.h | io_wq_current_is_worker | 1
+| | io-wq.c | io_worker_cancel_cb | 3
+| | include/linux/atomic/atomic-instrumented.h | atomic_dec | 5
+| | arch/mips/include/asm/bitops.h | clear_bit_unlock | 4
+| | io-wq.c | io_task_worker_match | 2
+| | io-wq.c | io_worker_exit | 2
+| | kernel/task_work.c | task_work_cancel_match | 2
+| | include/linux/rculist_nulls.h | hlist_nulls_del_rcu | 1
+| | include/linux/rculist.h | list_del_rcu | 1
+| | include/linux/rcupdate.h | kfree_rcu | 1
+| | kernel/exit.c | do_exit | 1
+| | io-wq.c | __io_acct_run_queue | 3
+| | slist.h | wq_list_empty | 1
+| | io-wq.c | io_acct_run_queue | 4
+| | io-wq.c | io_acct_activate_free_worker | 3
+| | drivers/block/aoe/aoenet.c | __must_hold | 3
+| | include/linux/rculist_nulls.h | hlist_nulls_for_each_entry_rcu | 1
+| | include/linux/sched.h | wake_up_process | 2
+| | io-wq.c | io_wq_create_worker | 2
+| | include/linux/spinlock.h | raw_spin_lock | 20
+| | include/linux/spinlock.h | raw_spin_unlock | 26
+| | tools/testing/vma/vma_internal.h | pr_warn_once | 1
+| | linux/atomic.h | atomic_inc | 6
+| | io-wq.c | io_wq_inc_running | 2
+| | io-wq.c | create_worker_cb | 5
+| | io-wq.c | io_queue_worker_create | 3
+| | arch/mips/include/asm/bitops.h | test_and_set_bit_lock | 1
+| | include/linux/task_work.h | init_task_work | 1
+| | kernel/task_work.c | task_work_add | 1
+| | io-wq.c | io_wq_dec_running | 4
+| | io-wq.c | __io_worker_busy | 2
+| | include/linux/rculist_nulls.h | hlist_nulls_del_init_rcu | 1
+| | io-wq.c | __io_worker_idle | 2
+| | include/linux/rculist_nulls.h | hlist_nulls_add_head_rcu | 2
+| | io-wq.c | __io_get_work_hash | 5
+| | io-wq.c | io_get_work_hash | 3
+| | linux/atomic.h | atomic_read | 5
+| | io-wq.c | io_wait_on_hash | 2
+| | linux/include/linux/spinlock.h | spin_lock_irq | 3
+| | include/linux/wait.h | __add_wait_queue | 1
+| | include/linux/list.h | list_del_init | 3
+| | linux/include/linux/spinlock.h | spin_unlock_irq | 3
+| | io-wq.c | io_get_next_work | 2
+| | slist.h | wq_list_for_each | 2
+| | io-wq.h | __io_wq_is_hashed | 3
+| | slist.h | wq_list_del | 2
+| | arch/alpha/include/asm/bitops.h | test_and_set_bit | 1
+| | slist.h | wq_list_cut | 1
+| | include/linux/wait.h | wq_has_sleeper | 2
+| | io-wq.c | io_assign_current_work | 4
+| | io_uring.h | io_run_task_work | 2
+| | include/linux/sched.h | cond_resched | 1
+| | io-wq.c | io_worker_handle_work | 3
+| | net/mac80211/agg-tx.c | __releases | 1
+| | include/linux/atomic/atomic-instrumented.h | atomic_or | 4
+| | io-wq.c | io_wq_enqueue | 2
+| | io-wq.c | io_wq_worker | 3
+| | include/linux/bitops.h | set_mask_bits | 1
+| | include/linux/sprintf.h | snprintf | 1
+| | fs/exec.c | set_task_comm | 1
+| | kernel/time/sleep_timeout.c | schedule_timeout | 1
+| | include/linux/sched/signal.h | signal_pending | 1
+| | kernel/signal.c | get_signal | 1
+| | include/linux/cpumask.h | cpumask_test_cpu | 1
+| | arch/mips/include/asm/smp.h | raw_smp_processor_id | 1
+| | io-wq.c | io_wq_worker_running | 1
+| | io-wq.c | io_wq_worker_sleeping | 1
+| | io-wq.c | io_init_new_worker | 3
+| | include/linux/sched.h | set_cpus_allowed_ptr | 1
+| | include/linux/rculist.h | list_add_tail_rcu | 1
+| | kernel/sched/core.c | wake_up_new_task | 1
+| | io-wq.c | io_wq_work_match_all | 3
+| | io-wq.c | io_should_retry_thread | 3
+| | include/linux/sched/signal.h | fatal_signal_pending | 1
+| | io-wq.c | queue_create_worker_retry | 3
+| | include/linux/workqueue.h | schedule_delayed_work | 1
+| | include/linux/jiffies.h | msecs_to_jiffies | 1
+| | io-wq.c | create_worker_cont | 4
+| | kernel/fork.c | create_io_thread | 2
+| | tools/lib/slab.c | kfree | 6
+| | io-wq.c | io_workqueue_create | 2
+| | io-wq.c | create_io_worker | 4
+| | include/linux/refcount.h | refcount_set | 1
+| | kernel/locking/spinlock_debug.c | raw_spin_lock_init |  3
+| | io-wq.c | io_acct_for_each_worker | 3
+| | io-wq.c | io_wq_for_each_worker | 3
+| | io-wq.c | io_wq_worker_wake | 2
+| | include/linux/sched/signal.h | __set_notify_signal | 2
+| | io-wq.c | io_run_cancel | 3
+| | io-wq.c | io_wq_insert_work | 2
+| | slist.h | wq_list_add_tail | 1
+| | slist.h | wq_list_add_after | 1
+| | io-wq.c | io_wq_work_match_item | 2
+| | io-wq.c | io_wq_enqueue | 2
+| | include/linux/rcupdate.h | rcu_read_lock | 7
+| | include/linux/rcupdate.h | rcu_read_unlock | 7
+| | io-wq.c | io_wq_hash_work | 1
+| | include/linux/hash.h | hash_ptr | 1
+| | io-wq.c | __io_wq_worker_cancel | 2
+| | io-wq.c | io_wq_worker_cancel | 2
+| | io-wq.c | io_wq_remove_pending | 2
+| | io-wq.c | io_wq_cancel_pending_work | 5
+| | io-wq.c | io_acct_cancel_running_work | 2
+| | io-wq.c | io_wq_cancel_running_work | 2
+| | io-wq.c | io_wq_cancel_cb | 1
+| | io-wq.c | io_wq_hash_wake | 2
+| | arch/mips/include/asm/bitops.h | test_and_clear_bit | 1
+| | io-wq.c | io_wq_create | 1
+| | include/linux/refcount.h | refcount_inc | 1
+| | include/linux/cpumask.h | alloc_cpumask_var | 2
+| | kernel/cgroup/cpuset.c | cpuset_cpus_allowed | 2
+| | include/linux/sched/signal.h | task_rlimit | 3
+| | linux/atomic.h | atomic_set | 2
+| | include/linux/sched/task.h | get_task_struct | 1
+| | include/linux/cpuhotplug.h | cpuhp_state_add_instance_nocalls | 1
+| | lib/cpumask.c | free_cpumask_var | 3
+| | io-wq.c | io_task_work_match | 2
+| | io-wq.c | io_wq_exit_start | 1
+| | io-wq.c | io_wq_cancel_tw_create | 4
+| | io-wq.c | io_wq_exit_workers | 2
+| | include/linux/sched/task.h | put_task_struct | 1
+| | io-wq.c | io_wq_destroy | 2
+| | include/linux/cpuhotplug.h | cpuhp_state_remove_instance_nocalls | 1
+| | io-wq.c | io_wq_put_and_exit | 1
+| | io-wq.c | io_wq_worker_affinity | 2
+| | include/linux/cpumask.h | cpumask_set_cpu | 1
+| | include/linux/cpumask.h | cpumask_clear_cpu | 1
+| | io-wq.c | __io_wq_cpu_online | 3
+| | io-wq.c | io_wq_cpu_online | 2
+| | scripts/include/list.h | hlist_entry_safe | 2
+| | io-wq.c | io_wq_cpu_offline | 2
+| | io-wq.c | io_wq_cpu_affinity | 1
+| | include/linux/cpumask.h | cpumask_subset | 1
+| | include/linux/cpumask.h | cpumask_copy | 2
+| | io-wq.c | io_wq_max_workers | 1
+| | io-wq.c | io_wq_init | 1
+| | include/linux/cpuhotplug.h | cpuhp_setup_state_multi | 1
+io-wq.h | io-wq.h | io_wq_put_hash | 1
+| | include/linux/refcount.h | refcount_dec_and_test | 1
+| | io-wq.c | io_wq_create | 1
+| | io-wq.c | io_wq_exit_start | 1
+| | io-wq.c | io_wq_put_and_exit | 1
+| | io-wq.c | io_wq_enqueue | 1
+| | io-wq.c | io_wq_hash_work | 1
+| | io-wq.c | io_wq_cpu_affinity | 1
+| | io-wq.c | io_wq_max_workers | 1
+| | io-wq.c | io_wq_worker_stopped | 1
+| | io-wq.h | __io_wq_is_hashed | 2
+| | io-wq.h | io_wq_is_hashed | 1
+| | linux/atomic.h | atomic_read | 1
+| | io-wq.c | io_wq_cancel_cb | 1
+| | io-wq.c | io_wq_worker_sleeping | 2
+| | io-wq.c | io_wq_worker_running | 2
+| | io-wq.h | io_wq_current_is_worker | 1
 kbuf.c | kbuf.c | io_buffer_get_list | 10
 | | linux/compiler.h | READ_ONCE | 8
 | | linux/lockdep.h | lockdep_assert_held | 6
