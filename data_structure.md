@@ -13,10 +13,10 @@ io_ev_fd       | io_uring/eventfd.c | eventfd_ctx, uint, uint, refcount_t, atomi
 | | | | io_eventfd_register | io_uring/eventfd.c | local variable
 | | | | io_eventfd_unregister | io_uring/eventfd.c | function parameter
 | io_fadvise | io_uring/advise.c | struct file			*file, u64				offset, u64				len, u32				advice | io_fadvise_force_async | io_uring/advise.c | function parameter |
-| io_fadvise | io_uring/advise.c | struct file			*file, u64				offset, u64				len, u32				advice | io_fadvise_prep | io_uring/advise.c | local variable |
-| io_fadvise | io_uring/advise.c | struct file			*file, u64				offset, u64				len, u32				advice | io_fadvise | io_uring/advise.c | return value |
+| | io_uring/advise.c | struct file			*file, u64				offset, u64				len, u32				advice | io_fadvise_prep | io_uring/advise.c | local variable |
+| | io_uring/advise.c | struct file			*file, u64				offset, u64				len, u32				advice | io_fadvise | io_uring/advise.c | return value |
 | io_madvise | io_uring/advise.c | struct file			*file, u64				addr, u64				len, u32				advice | io_madvise_prep | io_uring/advise.c | local variable |
-| io_madvise | io_uring/advise.c | struct file			*file, u64				addr, u64				len, u32				advice | io_madvise | io_uring/advise.c | return value |
+| | io_uring/advise.c | struct file			*file, u64				addr, u64				len, u32				advice | io_madvise | io_uring/advise.c | return value |
 | io_cancel | io_uring/cancel.c | struct file			*file, u64				addr, u32				flags, s32				fd, u8				opcode | io_cancel_req_match | io_uring/cancel.c | function parameter |
 |  | io_uring/cancel.c | struct file			*file, u64				addr, u32				flags, s32				fd, u8				opcode | io_cancel_cb | io_uring/cancel.c | local variable |
 |  | io_uring/cancel.c | struct file			*file, u64				addr, u32				flags, s32				fd, u8				opcode | io_cancel_req_match | io_uring/cancel.c | unknown |
@@ -41,26 +41,26 @@ io_ev_fd       | io_uring/eventfd.c | eventfd_ctx, uint, uint, refcount_t, atomi
 |  | io_uring/cancel.c | struct file			*file, u64				addr, u32				flags, s32				fd, u8				opcode | io_timeout_remove | io_uring/timeout.c | local variable |
 |  | io_uring/cancel.c | struct file			*file, u64				addr, u32				flags, s32				fd, u8				opcode | __io_waitid_cancel | io_uring/waitid.c | unknown |
 | io_cancel_data | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | io_cancel_req_match | io_uring/cancel.c | function parameter |
-| io_cancel_data | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | io_cancel_cb | io_uring/cancel.c | local variable |
-| io_cancel_data | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | io_cancel_req_match | io_uring/cancel.c | unknown |
-| io_cancel_data | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | io_cancel_req_match | io_uring/cancel.c | unknown |
-| io_cancel_data | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | if | io_uring/cancel.c | unknown |
-| io_cancel_data | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | io_async_cancel | io_uring/cancel.c | local variable |
-| io_cancel_data | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | req_set_fail | io_uring/cancel.c | unknown |
-| io_cancel_data | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | io_sync_cancel | io_uring/cancel.c | local variable |
-| io_cancel_data | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | if | io_uring/cancel.c | unknown |
-| io_cancel_data | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | if | io_uring/futex.c | unknown |
-| io_cancel_data | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | io_poll_cancel_req | io_uring/poll.c | unknown |
-| io_cancel_data | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | if | io_uring/poll.c | unknown |
-| io_cancel_data | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | __io_poll_cancel | io_uring/poll.c | function parameter |
-| io_cancel_data | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | io_poll_cancel_req | io_uring/poll.c | unknown |
-| io_cancel_data | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | io_poll_remove | io_uring/poll.c | local variable |
-| io_cancel_data | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | req_set_fail | io_uring/timeout.c | unknown |
-| io_cancel_data | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | io_timeout_cancel | io_uring/timeout.c | function parameter |
-| io_cancel_data | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | if | io_uring/timeout.c | local variable |
-| io_cancel_data | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | if | io_uring/timeout.c | local variable |
-| io_cancel_data | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | io_timeout_remove | io_uring/timeout.c | local variable |
-| io_cancel_data | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | __io_waitid_cancel | io_uring/waitid.c | unknown |
+| | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | io_cancel_cb | io_uring/cancel.c | local variable |
+| | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | io_cancel_req_match | io_uring/cancel.c | unknown |
+| | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | io_cancel_req_match | io_uring/cancel.c | unknown |
+| | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | if | io_uring/cancel.c | unknown |
+| | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | io_async_cancel | io_uring/cancel.c | local variable |
+| | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | req_set_fail | io_uring/cancel.c | unknown |
+| | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | io_sync_cancel | io_uring/cancel.c | local variable |
+| | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | if | io_uring/cancel.c | unknown |
+| | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | if | io_uring/futex.c | unknown |
+| | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | io_poll_cancel_req | io_uring/poll.c | unknown |
+| | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | if | io_uring/poll.c | unknown |
+| | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | __io_poll_cancel | io_uring/poll.c | function parameter |
+| | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | io_poll_cancel_req | io_uring/poll.c | unknown |
+| | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | io_poll_remove | io_uring/poll.c | local variable |
+| | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | req_set_fail | io_uring/timeout.c | unknown |
+| | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | io_timeout_cancel | io_uring/timeout.c | function parameter |
+| | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | if | io_uring/timeout.c | local variable |
+| | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | if | io_uring/timeout.c | local variable |
+| | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | io_timeout_remove | io_uring/timeout.c | local variable |
+| | io_uring/cancel.h | struct io_ring_ctx *ctx, union {, u64 data, struct file *file | __io_waitid_cancel | io_uring/waitid.c | unknown |
 | io_epoll | io_uring/epoll.c | struct file			*file, int				epfd, int				op, int				fd, struct epoll_event		event | io_epoll_ctl_prep | io_uring/epoll.c | local variable |
 | io_epoll | io_uring/epoll.c | struct file			*file, int				epfd, int				op, int				fd, struct epoll_event		event | io_epoll_ctl | io_uring/epoll.c | local variable |
 | io_epoll | io_uring/epoll.c | struct file			*file, int				epfd, int				op, int				fd, struct epoll_event		event | io_epoll_wait_prep | io_uring/epoll.c | local variable |
