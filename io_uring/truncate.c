@@ -20,6 +20,7 @@ struct io_ftrunc {
 	loff_t				len;
 };
 
+// Menyiapkan operasi ftruncate, memeriksa field SQE yang tidak valid,
 int io_ftruncate_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_ftrunc *ft = io_kiocb_to_cmd(req, struct io_ftrunc);
@@ -34,6 +35,7 @@ int io_ftruncate_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return 0;
 }
 
+// Menjalankan ftruncate untuk memotong file ke range yang ditentukan.
 int io_ftruncate(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_ftrunc *ft = io_kiocb_to_cmd(req, struct io_ftrunc);

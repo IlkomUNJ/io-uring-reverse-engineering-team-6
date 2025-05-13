@@ -22,6 +22,8 @@ struct io_sync {
 	int				mode;
 };
 
+// Menyiapkan request untuk operasi sync_file_range().
+// Memastikan parameter valid, menyalin offset, panjang, dan flag ke struktur internal.
 int io_sfr_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_sync *sync = io_kiocb_to_cmd(req, struct io_sync);
@@ -37,6 +39,8 @@ int io_sfr_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return 0;
 }
 
+// Menjalankan operasi sync_file_range() untuk menyinkronkan bagian file ke storage.
+// Memastikan dipanggil dalam konteks blocking.
 int io_sync_file_range(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_sync *sync = io_kiocb_to_cmd(req, struct io_sync);
@@ -50,6 +54,8 @@ int io_sync_file_range(struct io_kiocb *req, unsigned int issue_flags)
 	return IOU_OK;
 }
 
+// Menyiapkan request untuk operasi fsync() atau datasync().
+// Validasi flag dan menyalin parameter offset dan panjang.
 int io_fsync_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_sync *sync = io_kiocb_to_cmd(req, struct io_sync);
@@ -67,6 +73,8 @@ int io_fsync_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return 0;
 }
 
+// Menjalankan operasi vfs_fsync_range() untuk menyinkronkan data/file ke disk.
+// Memastikan dipanggil dalam konteks blocking.
 int io_fsync(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_sync *sync = io_kiocb_to_cmd(req, struct io_sync);
@@ -82,6 +90,9 @@ int io_fsync(struct io_kiocb *req, unsigned int issue_flags)
 	return IOU_OK;
 }
 
+
+// Menyiapkan request untuk operasi fallocate().
+// Menyalin mode, offset, dan panjang dari SQE ke struktur internal.
 int io_fallocate_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_sync *sync = io_kiocb_to_cmd(req, struct io_sync);
@@ -96,6 +107,9 @@ int io_fallocate_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return 0;
 }
 
+
+// Menjalankan vfs_fallocate() untuk mengalokasikan ruang kosong di file.
+// Jika sukses, memberi tahu fsnotify bahwa file telah dimodifikasi.
 int io_fallocate(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_sync *sync = io_kiocb_to_cmd(req, struct io_sync);

@@ -28,6 +28,8 @@
 
 #define IO_DMA_ATTR (DMA_ATTR_SKIP_CPU_SYNC | DMA_ATTR_WEAK_ORDERING)
 
+// Melakukan unmap (pembatalan pemetaan DMA) untuk sejumlah buffer (nr_mapped)
+// yang dimiliki oleh area pada ifq.
 static void __io_zcrx_unmap_area(struct io_zcrx_ifq *ifq,
 				 struct io_zcrx_area *area, int nr_mapped)
 {
@@ -44,12 +46,15 @@ static void __io_zcrx_unmap_area(struct io_zcrx_ifq *ifq,
 	}
 }
 
+// Unmap seluruh area jika sudah dimapping sebelumnya.
 static void io_zcrx_unmap_area(struct io_zcrx_ifq *ifq, struct io_zcrx_area *area)
 {
 	if (area->is_mapped)
 		__io_zcrx_unmap_area(ifq, area, area->nia.num_niovs);
 }
 
+// Melakukan pemetaan DMA untuk seluruh halaman dalam area.
+// Jika gagal, membatalkan semua pemetaan sebelumnya.
 static int io_zcrx_map_area(struct io_zcrx_ifq *ifq, struct io_zcrx_area *area)
 {
 	int i;
@@ -78,6 +83,8 @@ static int io_zcrx_map_area(struct io_zcrx_ifq *ifq, struct io_zcrx_area *area)
 	return 0;
 }
 
+// Sinkronisasi buffer agar siap digunakan oleh perangkat DMA.
+// Hanya dilakukan jika perangkat membutuhkan sinkronisasi eksplisit.
 static void io_zcrx_sync_for_device(const struct page_pool *pool,
 				    struct net_iov *niov)
 {
@@ -113,6 +120,7 @@ static inline struct io_zcrx_area *io_zcrx_iov_to_area(const struct net_iov *nio
 	return container_of(owner, struct io_zcrx_area, nia);
 }
 
+// Mengambil pointer ke penghitung referensi pengguna dari net_iov terkait.
 static inline atomic_t *io_get_user_counter(struct net_iov *niov)
 {
 	struct io_zcrx_area *area = io_zcrx_iov_to_area(niov);
@@ -120,6 +128,8 @@ static inline atomic_t *io_get_user_counter(struct net_iov *niov)
 	return &area->user_refs[net_iov_idx(niov)];
 }
 
+// Mengurangi penghitung referensi pengguna dari niov jika masih > 0.
+// Mengembalikan false jika penghitung sudah nol (tidak valid untuk dikurangi).
 static bool io_zcrx_put_niov_uref(struct net_iov *niov)
 {
 	atomic_t *uref = io_get_user_counter(niov);
@@ -130,6 +140,7 @@ static bool io_zcrx_put_niov_uref(struct net_iov *niov)
 	return true;
 }
 
+// Menambah penghitung referensi pengguna dari niov.
 static void io_zcrx_get_niov_uref(struct net_iov *niov)
 {
 	atomic_inc(io_get_user_counter(niov));
@@ -142,6 +153,7 @@ static inline struct page *io_zcrx_iov_page(const struct net_iov *niov)
 	return area->pages[net_iov_idx(niov)];
 }
 
+// Mengalokasikan ring buffer untuk menerima Zero-Copy RX entries.
 static int io_allocate_rbuf_ring(struct io_zcrx_ifq *ifq,
 				 struct io_uring_zcrx_ifq_reg *reg,
 				 struct io_uring_region_desc *rd)
@@ -166,6 +178,7 @@ static int io_allocate_rbuf_ring(struct io_zcrx_ifq *ifq,
 	return 0;
 }
 
+// Membebaskan ring buffer untuk Zero-Copy RX.
 static void io_free_rbuf_ring(struct io_zcrx_ifq *ifq)
 {
 	io_free_region(ifq->ctx, &ifq->ctx->zcrx_region);
@@ -173,6 +186,7 @@ static void io_free_rbuf_ring(struct io_zcrx_ifq *ifq)
 	ifq->rqes = NULL;
 }
 
+// Membebaskan semua resource milik area ZCRX, termasuk buffer dan halaman user.
 static void io_zcrx_free_area(struct io_zcrx_area *area)
 {
 	io_zcrx_unmap_area(area->ifq, area);
@@ -187,6 +201,7 @@ static void io_zcrx_free_area(struct io_zcrx_area *area)
 	kfree(area);
 }
 
+// Membuat area ZCRX dari alamat user space dan rangenya.
 static int io_zcrx_create_area(struct io_zcrx_ifq *ifq,
 			       struct io_zcrx_area **res,
 			       struct io_uring_zcrx_area_reg *area_reg)
@@ -277,6 +292,7 @@ static struct io_zcrx_ifq *io_zcrx_ifq_alloc(struct io_ring_ctx *ctx)
 	return ifq;
 }
 
+// Fungsi ini untuk melepaskan perangkat jaringan dari ifq dan mengatur ifq->netdev menjadi NULL.
 static void io_zcrx_drop_netdev(struct io_zcrx_ifq *ifq)
 {
 	spin_lock(&ifq->lock);
@@ -287,6 +303,8 @@ static void io_zcrx_drop_netdev(struct io_zcrx_ifq *ifq)
 	spin_unlock(&ifq->lock);
 }
 
+
+// Menutup antrean penerimaan jaringan dan melepaskan perangkat jika ada.
 static void io_close_queue(struct io_zcrx_ifq *ifq)
 {
 	struct net_device *netdev;
@@ -312,6 +330,7 @@ static void io_close_queue(struct io_zcrx_ifq *ifq)
 	ifq->if_rxq = -1;
 }
 
+// Membebaskan semua sumber daya yang digunakan oleh ifq, termasuk perangkat dan area memori.
 static void io_zcrx_ifq_free(struct io_zcrx_ifq *ifq)
 {
 	io_close_queue(ifq);
@@ -421,6 +440,7 @@ err:
 	return ret;
 }
 
+// Fungsi ini untuk membatalkan pendaftaran ifq dari ctx dan membebaskan sumber daya yang terkait.
 void io_unregister_zcrx_ifqs(struct io_ring_ctx *ctx)
 {
 	struct io_zcrx_ifq *ifq = ctx->ifq;
@@ -444,6 +464,7 @@ static struct net_iov *__io_zcrx_get_free_niov(struct io_zcrx_area *area)
 	return &area->nia.niovs[niov_idx];
 }
 
+// mengembalikan net_iov ke freelist di area yang sesuai.
 static void io_zcrx_return_niov_freelist(struct net_iov *niov)
 {
 	struct io_zcrx_area *area = io_zcrx_iov_to_area(niov);
@@ -453,6 +474,7 @@ static void io_zcrx_return_niov_freelist(struct net_iov *niov)
 	spin_unlock_bh(&area->freelist_lock);
 }
 
+// mengembalikan niov ke resource atau freelist.
 static void io_zcrx_return_niov(struct net_iov *niov)
 {
 	netmem_ref netmem = net_iov_to_netmem(niov);
@@ -465,6 +487,7 @@ static void io_zcrx_return_niov(struct net_iov *niov)
 	page_pool_put_unrefed_netmem(niov->pp, netmem, -1, false);
 }
 
+// membersihkan atau mengembalikan semua buffer yang sudah digunakan.
 static void io_zcrx_scrub(struct io_zcrx_ifq *ifq)
 {
 	struct io_zcrx_area *area = ifq->area;
@@ -486,6 +509,7 @@ static void io_zcrx_scrub(struct io_zcrx_ifq *ifq)
 	}
 }
 
+// shutdown dan membersihkan queue ifq.
 void io_shutdown_zcrx_ifqs(struct io_ring_ctx *ctx)
 {
 	lockdep_assert_held(&ctx->uring_lock);
@@ -496,6 +520,7 @@ void io_shutdown_zcrx_ifqs(struct io_ring_ctx *ctx)
 	io_close_queue(ctx->ifq);
 }
 
+// mendapatkan jumlah entri yang ada di rq_ring.
 static inline u32 io_zcrx_rqring_entries(struct io_zcrx_ifq *ifq)
 {
 	u32 entries;
@@ -512,6 +537,8 @@ static struct io_uring_zcrx_rqe *io_zcrx_get_rqe(struct io_zcrx_ifq *ifq,
 	return &ifq->rqes[idx];
 }
 
+// mengisi kembali buffer yang hilang di ring queue dengan mengambil `net_iov` yang tidak terpakai.
+// Jika jumlah buffer yang perlu diisi tidak mencukupi, ia melanjutkan de
 static void io_zcrx_ring_refill(struct page_pool *pp,
 				struct io_zcrx_ifq *ifq)
 {
@@ -566,6 +593,8 @@ static void io_zcrx_ring_refill(struct page_pool *pp,
 	spin_unlock_bh(&ifq->rq_lock);
 }
 
+// mengisi buffer secara lambat jika pengisian cepat tidak mencukupi.
+// Buffer diambil dari freelist dan diproses untuk ditempatkan kembali dalam cache page pool.
 static void io_zcrx_refill_slow(struct page_pool *pp, struct io_zcrx_ifq *ifq)
 {
 	struct io_zcrx_area *area = ifq->area;
@@ -582,6 +611,9 @@ static void io_zcrx_refill_slow(struct page_pool *pp, struct io_zcrx_ifq *ifq)
 	spin_unlock_bh(&area->freelist_lock);
 }
 
+// Mengalokasikan `netmem` dari page pool untuk penggunaan lebih lanjut.
+// Jika tidak ada memori yang tersedia, ia akan mencoba untuk mengisi ulang buffer dan 
+// mengalokasikan kembali.
 static netmem_ref io_pp_zc_alloc_netmems(struct page_pool *pp, gfp_t gfp)
 {
 	struct io_zcrx_ifq *ifq = pp->mp_priv;
@@ -601,6 +633,7 @@ out_return:
 	return pp->alloc.cache[--pp->alloc.count];
 }
 
+// mengembalikan `netmem` yang tidak terpakai ke freelist setelah selesai dipakai.
 static bool io_pp_zc_release_netmem(struct page_pool *pp, netmem_ref netmem)
 {
 	struct net_iov *niov;
@@ -614,6 +647,8 @@ static bool io_pp_zc_release_netmem(struct page_pool *pp, netmem_ref netmem)
 	return false;
 }
 
+// menginisialisasi page pool dengan memverifikasi beberapa kondisi, seperti memastikan bahwa
+// perangkat yang terkait dengan page pool sesuai dan memastikan konfigurasi DMA benar.
 static int io_pp_zc_init(struct page_pool *pp)
 {
 	struct io_zcrx_ifq *ifq = pp->mp_priv;
@@ -633,6 +668,8 @@ static int io_pp_zc_init(struct page_pool *pp)
 	return 0;
 }
 
+// menghancurkan (cleanup) page pool dengan memeriksa
+// bahwa semua entri di freelist telah diproses dan melepaskan referensi perangkat keras.
 static void io_pp_zc_destroy(struct page_pool *pp)
 {
 	struct io_zcrx_ifq *ifq = pp->mp_priv;
@@ -643,6 +680,8 @@ static void io_pp_zc_destroy(struct page_pool *pp)
 	percpu_ref_put(&ifq->ctx->refs);
 }
 
+// Mengisi atribut Netlink dengan informasi mengenai queue RX,
+// tergantung pada apakah queue tersebut terkait dengan `io_uring` atau tidak.
 static int io_pp_nl_fill(void *mp_priv, struct sk_buff *rsp,
 			 struct netdev_rx_queue *rxq)
 {
@@ -658,6 +697,7 @@ static int io_pp_nl_fill(void *mp_priv, struct sk_buff *rsp,
 	return 0;
 }
 
+// Menghapus page pool dan menghapus referensi perangkat terkait dari Netdev.
 static void io_pp_uninstall(void *mp_priv, struct netdev_rx_queue *rxq)
 {
 	struct pp_memory_provider_params *p = &rxq->mp_params;
@@ -677,6 +717,8 @@ static const struct memory_provider_ops io_uring_pp_zc_ops = {
 	.uninstall		= io_pp_uninstall,
 };
 
+// menyiapkan dan mengisi Completion Queue Entry (CQE) untuk permintaan `req`.
+// mencatat hasil transfer data dengan menyetel informasi yang diperlukan dalam CQE.
 static bool io_zcrx_queue_cqe(struct io_kiocb *req, struct net_iov *niov,
 			      struct io_zcrx_ifq *ifq, int off, int len)
 {
@@ -714,6 +756,8 @@ static struct net_iov *io_zcrx_alloc_fallback(struct io_zcrx_area *area)
 	return niov;
 }
 
+// menyalin data dari sumber ke buffer tujuan, memecahnya menjadi bagian-bagian yang lebih kecil jika perlu, 
+// dan mengirimkan entri hasil salinan ke dalam antrian.
 static ssize_t io_zcrx_copy_chunk(struct io_kiocb *req, struct io_zcrx_ifq *ifq,
 				  void *src_base, struct page *src_page,
 				  unsigned int src_offset, size_t len)
@@ -761,6 +805,7 @@ static ssize_t io_zcrx_copy_chunk(struct io_kiocb *req, struct io_zcrx_ifq *ifq,
 	return copied ? copied : ret;
 }
 
+// menyalin fragmen data dari frag ke buffer target.
 static int io_zcrx_copy_frag(struct io_kiocb *req, struct io_zcrx_ifq *ifq,
 			     const skb_frag_t *frag, int off, int len)
 {
@@ -780,6 +825,7 @@ static int io_zcrx_copy_frag(struct io_kiocb *req, struct io_zcrx_ifq *ifq,
 	return copied;
 }
 
+// menerima fragmen dan menyalin data ke buffer atau menambahkan ke CQE jika menggunakan netmem.
 static int io_zcrx_recv_frag(struct io_kiocb *req, struct io_zcrx_ifq *ifq,
 			     const skb_frag_t *frag, int off, int len)
 {
@@ -787,7 +833,7 @@ static int io_zcrx_recv_frag(struct io_kiocb *req, struct io_zcrx_ifq *ifq,
 
 	if (unlikely(!skb_frag_is_net_iov(frag)))
 		return io_zcrx_copy_frag(req, ifq, frag, off, len);
-
+		mengembalikan `netmem` yang tidak terpakai ke freelist setelah selesai dipakai.
 	niov = netmem_to_net_iov(frag->netmem);
 	if (niov->pp->mp_ops != &io_uring_pp_zc_ops ||
 	    niov->pp->mp_priv != ifq)
@@ -798,7 +844,7 @@ static int io_zcrx_recv_frag(struct io_kiocb *req, struct io_zcrx_ifq *ifq,
 
 	/*
 	 * Prevent it from being recycled while user is accessing it.
-	 * It has to be done before grabbing a user reference.
+	 * It has to be domengembalikan `netmem` yang tidak terpakai ke freelist setelah selesai dipakai.ne before grabbing a user reference.
 	 */
 	page_pool_ref_netmem(net_iov_to_netmem(niov));
 	io_zcrx_get_niov_uref(niov);
@@ -907,6 +953,8 @@ out:
 	return offset - start_off;
 }
 
+// menerima pesan TCP menggunakan `tcp_read_sock` untuk membaca data ke dalam buffer, 
+// mengatur beberapa kondisi dan pengecekan status soket, dan menangani error atau requeue.
 static int io_zcrx_tcp_recvmsg(struct io_kiocb *req, struct io_zcrx_ifq *ifq,
 				struct sock *sk, int flags,
 				unsigned issue_flags, unsigned int *outlen)
@@ -953,6 +1001,8 @@ out:
 	return ret;
 }
 
+// antarmuka untuk menerima data dari soket TCP, 
+// memeriksa apakah protokol yang digunakan adalah TCP, dan memanggil `io_zcrx_tcp_recvmsg`.
 int io_zcrx_recv(struct io_kiocb *req, struct io_zcrx_ifq *ifq,
 		 struct socket *sock, unsigned int flags,
 		 unsigned issue_flags, unsigned int *len)
